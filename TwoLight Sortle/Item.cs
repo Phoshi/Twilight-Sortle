@@ -3,28 +3,37 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Runtime.Serialization;
 using Extensions;
 
 namespace TwoLight_Sortle {
     /// <summary>
     /// Represents an individual image
     /// </summary>
-    class Item {
-#region Private Instance Variables
-        private HashSet<Tag> _tags;
-        private Directory _directory;
+    [Serializable]
+    class Item : ISerializable{
+        #region Private Instance Variables
+        private List<Tag> _tags;
         private long _filesize;
         private uint _hash;
         private Size _dimensions;
         private HashSet<string> _links;
-#endregion
+        private bool _invalidated;
+        #endregion
 
-#region Public Read-Only interfaces
+        #region WinAPI Declarations
+        [DllImport("kernel32.dll", EntryPoint = "CreateSymbolicLinkW", CharSet = CharSet.Unicode)]
+        public static extern bool CreateSymbolicLink([In] string lpSymlinkFileName, [In] string lpTargetFileName,
+                                                     int dwFlags);
+        #endregion
+
+        #region Public Read-Only interfaces
         /// <summary>
         /// The absolute path of the image
         /// </summary>
-        public string Path { get; internal set; }
+        public string Path { get; set; }
 
         /// <summary>
         /// The filename of the image, without path or extension
@@ -67,7 +76,9 @@ namespace TwoLight_Sortle {
         /// The list of Tags associated with this image
         /// </summary>
         public IEnumerable<Tag> Tags {
-            get { return _tags; }
+            get {
+                return (from tag in _tags orderby tag.Name select tag).ToList();
+            }
         }
 
         /// <summary>
@@ -76,9 +87,7 @@ namespace TwoLight_Sortle {
         public Size Dimensions {
             get {
                 if (_dimensions.IsEmpty) {
-                    System.Drawing.Image tempImage = System.Drawing.Image.FromFile(Path);
-                    _dimensions = tempImage.Size;
-                    tempImage.Dispose();
+                    getDimensions();
                 }
                 return _dimensions;
             }
@@ -90,8 +99,7 @@ namespace TwoLight_Sortle {
         public string Filesize {
             get {
                 if (_filesize == 0) {
-                    FileInfo info = new FileInfo(Path);
-                    _filesize = info.Length;
+                    getFilesize();
                 }
                 string[] symbols = new[] {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"}; //Future proofing!
                 long returnSize = _filesize;
@@ -110,8 +118,7 @@ namespace TwoLight_Sortle {
         public long RawFilesize {
             get {
                 if (_filesize == 0) {
-                    FileInfo info = new FileInfo(Path);
-                    _filesize = info.Length;
+                    getFilesize();
                 }
                 return _filesize;
             }
@@ -128,15 +135,44 @@ namespace TwoLight_Sortle {
                 return _hash;
             }
         }
-#endregion
+
+        /// <summary>
+        /// Returns whether the image has any associated tags
+        /// </summary>
+        public bool HasTags {
+            get { return Tags.Count() > 0; }
+        }
+
+        /// <summary>
+        /// Returns whether the image linking state has been invalidated - by renaming or moving the file or such.
+        /// </summary>
+        public bool Invalidated {
+            get { return _invalidated; }
+        }
+
+        #endregion
 
 #region Constructors
         public Item(string path) {
             Path = path;
-            _tags = new HashSet<Tag>();
+            _tags = new List<Tag>();
+            //getDimensions();
             _dimensions = new Size();
+            //getFilesize();
             _filesize = 0;
             _hash = 0;
+            _invalidated = true;
+        }
+
+        public Item(SerializationInfo info, StreamingContext context) {
+            Path = info.GetString("Path");
+            _tags = (List<Tag>) info.GetValue("_tags", typeof(List<Tag>));
+            _filesize = (long) info.GetValue("_filesize", typeof(long));
+            _hash = info.GetUInt32("_hash");
+            _dimensions = (Size) info.GetValue("_dimensions", typeof (Size));
+            _links = (HashSet<string>) info.GetValue("_links", typeof(HashSet<string>));
+            _invalidated = info.GetBoolean("_invalidated");
+
         }
 #endregion
 
@@ -150,7 +186,7 @@ namespace TwoLight_Sortle {
             Stream imageFile = File.Open(Path, FileMode.Open, FileAccess.Read);
             Image newImage = Image.FromStream(imageFile);
             imageFile.Close();
-            if (resize!=new Size()) {
+            if (!resize.IsEmpty) {
                 Bitmap resizedImage = new Bitmap(resize.Width, resize.Height);
                 using (Graphics gr = Graphics.FromImage(resizedImage)) {
                     int newWidth, newHeight;
@@ -168,7 +204,19 @@ namespace TwoLight_Sortle {
                 newImage = resizedImage;
             }
             return newImage;
-            
+        }
+
+        private void getDimensions() {
+            System.Drawing.Image tempImage = Image;
+            _dimensions = tempImage.Size;
+            tempImage.Dispose();
+        }
+
+        private void getFilesize() {
+            FileInfo info = new FileInfo(Path);
+            _filesize = info.Length;
+            info = null;
+            GC.Collect();
         }
 #endregion
 
@@ -178,7 +226,10 @@ namespace TwoLight_Sortle {
         /// </summary>
         /// <param name="tag">The tag to add</param>
         public void Add(Tag tag) {
-            _tags.Add(tag);
+            if (!_tags.Contains(tag)) {
+                tag.AddedImage(this);
+                _tags.Add(tag);
+            }
         }
 
         /// <summary>
@@ -194,7 +245,16 @@ namespace TwoLight_Sortle {
         /// </summary>
         /// <param name="tag">The tag to remove</param>
         public void Remove(Tag tag) {
+            tag.RemovedImage(this);
             _tags.Remove(tag);
+        }
+
+        /// <summary>
+        /// Remove a tag from this image, if it exists
+        /// </summary>
+        /// <param name="tag">the name of the tag</param>
+        public void Remove(string tag) {
+            Remove(TwoLight_Sortle.Tags.GetTag(tag));
         }
 
         /// <summary>
@@ -203,7 +263,11 @@ namespace TwoLight_Sortle {
         /// <param name="target">The path to link to</param>
         /// <returns>Whether we were successfull or not (If not it's probably due to access restrictions)</returns>
         public bool Link(string target) {
-            throw new NotImplementedException();
+            bool success = CreateSymbolicLink(target, Path, 0);
+            if (!success) {
+                throw new UnauthorizedAccessException("Symbolic Link creation failed");
+            }
+            return success;
         }
 
         /// <summary>
@@ -211,7 +275,20 @@ namespace TwoLight_Sortle {
         /// </summary>
         /// <param name="newFileName">The new filename, including extension</param>
         public void Rename(string newFileName) {
-            throw new NotImplementedException();
+            if ((Filename + Extension) == newFileName) {
+                return;
+            }
+            string pathRoot = System.IO.Path.GetDirectoryName(Path);
+            string newPath = System.IO.Path.Combine(pathRoot, newFileName);
+            int numFiles = 0;
+            while (File.Exists(newPath)) {
+                string filenameWithoutExtension = System.IO.Path.GetFileNameWithoutExtension(newFileName);
+                newPath = System.IO.Path.Combine(pathRoot,
+                                                 "{0} ({1}).{2}".With(filenameWithoutExtension, ++numFiles, Extension));
+            }
+            File.Move(Path, newPath);
+            Path = newPath;
+            _invalidated = true;
         }
 
         /// <summary>
@@ -222,15 +299,39 @@ namespace TwoLight_Sortle {
             throw new NotImplementedException();
         }
 
+
+        public void RenameToTags() {
+            if (HasTags) {
+                string newName = String.Join(" ", from tag in Tags orderby tag.Name descending select tag.Name);
+                Filename = newName;
+            }
+        }
+
+
+        public void RenameToHash() {
+            Filename = Hash.ToString();
+        }
+
         #endregion
 
         public override string ToString() {
-            if (_tags.Count > 0) {
+            if (HasTags) {
                 return String.Join(", ", _tags);
             }
             else {
                 return Path;
             }
         }
+
+        public void GetObjectData(SerializationInfo info, StreamingContext context) {
+            info.AddValue("Path", Path);
+            info.AddValue("_tags", _tags, _tags.GetType());
+            info.AddValue("_filesize", _filesize);
+            info.AddValue("_hash", _hash);
+            info.AddValue("_dimensions", _dimensions);
+            info.AddValue("_links", _links);
+            info.AddValue("_invalidated", _invalidated);
+        }
+
     }
 }

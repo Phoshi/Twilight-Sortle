@@ -3,12 +3,15 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.AccessControl;
+using System.Runtime.Serialization;
+using Extensions;
 
 namespace TwoLight_Sortle {
     /// <summary>
     /// Represents a specific directory for sorting 
     /// </summary>
-    class Directory : IEnumerable, IEnumerator {
+    [Serializable]
+    class Directory : IEnumerable, IEnumerator, ISerializable {
         #region Private Instance Variables;
         private string[] _filepaths;
         private Dictionary<string, Item> _items;
@@ -21,14 +24,30 @@ namespace TwoLight_Sortle {
         #region Public Instance Variables
         public string Path { get; internal set; }
         public List<Tag> Tags {
-            get { throw new NotImplementedException(); }
+            get {
+                assureFilesLoaded();
+                return (from kvPair in _items select kvPair.Value.Tags).SelectMany(tag => tag).Distinct().ToList();
+            }
         }
         public List<Item> Items {
             get {
-                foreach (Item item in this) {
-                }
+                assureFilesLoaded();
                 return (from kvPair in _items select kvPair.Value).ToList();
             }
+        }
+        public bool Enabled {
+            get { return _enabled; }
+            set { _enabled = value; }
+        }
+        public bool Recursive {
+            get { return _recursive; }
+            set { _recursive = value; }
+        }
+        public List<string> ValidFileTypes {
+            get { return _validFileTypes; }
+        }
+        public String SortPath {
+            get { return _sortPath; }
         }
         #endregion
 
@@ -36,25 +55,38 @@ namespace TwoLight_Sortle {
         public Directory(string path) {
             Path = path;
             _items = new Dictionary<string, Item>();
+            _enabled = true;
             _validFileTypes = new List<string> {
                                                    ".png",
                                                    ".jpg",
                                                    ".gif"
                                                };
             updateFilepaths();
+            assureFilesLoaded();
+        }
+
+        public Directory(SerializationInfo info, StreamingContext context) {
+            _items = new Dictionary<string, Item>();
+            Path = info.GetString("Path");
+            _validFileTypes = (List<string>) info.GetValue("_validFileTypes", typeof (List<String>));
+            _sortPath = info.GetString("_sortPath");
+            _recursive = info.GetBoolean("_recursive");
+            _enabled = info.GetBoolean("_enabled");
+            updateFilepaths();
+            assureFilesLoaded();
         }
         #endregion
 
         #region Private Methods
         private void updateFilepaths() {
-            _filepaths = GetFiles(Path);
+            _filepaths = GetFiles(Path).Where(path=> _validFileTypes.Contains(System.IO.Path.GetExtension(path))).ToArray();
             if (_recursive) {
                 List<string> subdirectories = new List<string>();
                 subdirectories.AddRange(System.IO.Directory.GetDirectories(Path));
                 while (subdirectories.Count > 0) {
                     string directory = subdirectories.First();
                     subdirectories.RemoveAt(0);
-                    string[] newFiles = GetFiles(directory);
+                    string[] newFiles = GetFiles(directory).Where(path=> _validFileTypes.Contains(System.IO.Path.GetExtension(path))).ToArray();
                     string[] newFilePaths = new string[newFiles.Length + _filepaths.Length];
                     Array.Copy(_filepaths, newFilePaths, _filepaths.Length);
                     Array.Copy(newFiles, 0, newFilePaths, _filepaths.Length, newFiles.Length);
@@ -76,6 +108,12 @@ namespace TwoLight_Sortle {
             rawFiles = rawFiles.Where(file => _validFileTypes.Contains(System.IO.Path.GetExtension(file))).ToArray();
             return rawFiles;
         }
+
+        private void assureFilesLoaded() {
+            foreach (Item item in this) { //Iteration when everything is loaded is a very cheap action, but even so, consider improving
+            }
+        }
+
         #endregion
 
         #region Public Methods
@@ -85,7 +123,8 @@ namespace TwoLight_Sortle {
         #endregion
 
         #region Enumeration
-        private int _position;
+
+        private int _position = -1;
         public IEnumerator GetEnumerator() {
             return this;
         }
@@ -95,15 +134,15 @@ namespace TwoLight_Sortle {
         }
 
         public bool MoveNext() {
-            _position++;
-            if (_position < _filepaths.Length) {
+            //_position++;
+            if (++_position < _filepaths.Length) {
                 return true;
             }
             return false;
         }
 
         public void Reset() {
-            _position = 0;
+            _position = -1;
         }
 
         public object Current {
@@ -115,5 +154,24 @@ namespace TwoLight_Sortle {
             }
         }
         #endregion
+
+        public override bool Equals(object obj) {
+            Directory otherDir = obj as Directory;
+            if (otherDir == null) {
+                return base.Equals(obj);
+            }
+            return otherDir.Path == Path;
+        }
+        public override string ToString() {
+            return @"""{0}"" - {1} item{2}".With(Path, _filepaths.Count(), _filepaths.Count()==1 ? "" : "s");
+        }
+        public void GetObjectData(SerializationInfo info, StreamingContext context) {
+            info.AddValue("Path", Path);
+            info.AddValue("_validFileTypes", _validFileTypes);
+            info.AddValue("_sortPath", _sortPath);
+            info.AddValue("_recursive", _recursive);
+            info.AddValue("_enabled", _enabled);
+
+        }
     }
 }

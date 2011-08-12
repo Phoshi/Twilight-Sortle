@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -40,38 +41,55 @@ namespace TwoLight_Sortle {
         private void doSearch() {
             foreach (Item item in _allItems) {
                 if (itemPassesSearch(item)) {
+                    string filesize = item.Filesize;
+                    Size size = item.Dimensions;
                     _results.Add(item);
                 }
             }
+            _results = (from result in _results orderby result.Filename select result).ToList();
         }
 
+        private bool regexIsBroken = false;
         private bool itemPassesSearch(Item item) {
+            if ((_state & SearchState.Tagged) != SearchState.Tagged && item.HasTags) {
+                return false;
+            }
+            if ((_state & SearchState.Untagged) != SearchState.Untagged && !item.HasTags) {
+                return false;
+            }
             if (string.IsNullOrWhiteSpace(_search)) {
                 return true;
             }
-            if ((_state & SearchState.Tagged) == SearchState.Tagged && item.Tags.Count() == 0) {
-                return false;
-            }
-            if ((_state & SearchState.Untagged) == SearchState.Untagged && item.Tags.Count() > 0) {
-                return false;
-            }
-            bool regex, caseSensitive, tags, filenames;
+
             string searchTerm = item.Filename;
-            caseSensitive = ((_state & SearchState.CaseSensitive) == SearchState.CaseSensitive);
-            regex = ((_state & SearchState.Regex) == SearchState.Regex);
-            tags = ((_state & SearchState.Tags) == SearchState.Tags);
-            filenames = ((_state & SearchState.Filenames) == SearchState.Filenames);
+            bool caseSensitive = ((_state & SearchState.CaseSensitive) == SearchState.CaseSensitive);
+            bool regex = ((_state & SearchState.Regex) == SearchState.Regex);
+            bool tags = ((_state & SearchState.Tags) == SearchState.Tags);
+            bool filenames = ((_state & SearchState.Filenames) == SearchState.Filenames);
+
             if (!caseSensitive) {
                 searchTerm = searchTerm.ToLower();
             }
-            if (!(filenames && (regex ? Regex.IsMatch(searchTerm, _search, caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase) : searchTerm.Contains(_search)))) {
-                return false;
+            bool passesFilename = false;
+            bool passesTag = false;
+            try {
+                if (regexIsBroken || (filenames &&
+                     (regex
+                          ? Regex.IsMatch(searchTerm, _search,
+                                          caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase)
+                          : searchTerm.Contains(_search)))) {
+                    passesFilename = true;
+                }
             }
-            if (item.Tags.Count() > 0 && !(tags && item.Tags.Matches(searchTerm, caseSensitive))) {
-                return false;
+            catch (ArgumentException) {
+                passesFilename = true;
+                regexIsBroken = true;
+            }
+            if ((tags && item.Tags.Matches(_search, caseSensitive))) {
+                passesTag = true;
             }
 
-            return true;
+            return passesFilename || passesTag;
         }
 
         public IEnumerator GetEnumerator() {

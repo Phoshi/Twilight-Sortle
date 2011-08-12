@@ -6,23 +6,24 @@ using System.Text;
 
 namespace TwoLight_Sortle {
     static class Load {
-        private static Dictionary<UInt32, Item> _files;
+        public static Dictionary<UInt32, Item> FilesCache = new Dictionary<UInt32, Item>();
 
         static Load() {
-            _files = new Dictionary<UInt32, Item>();
         }
 
         public static Item Image(string path) {
             UInt32 hash = Hash(path);
-            if (!_files.ContainsKey(hash)) {
-                _files[hash] = new Item(path);
+            if (!FilesCache.ContainsKey(hash)) {
+                FilesCache[hash] = new Item(path);
             }
-            return _files[hash];
+            FilesCache[hash].Path = path; //To handle moving files around and stuff
+            return FilesCache[hash];
         }
 
         public static UInt32 Hash(string path) {
             Stream filestream = new FileStream(path, FileMode.Open, FileAccess.Read);
             UInt32 hash = HashStream(filestream);
+            filestream.Close();
             return hash;
         }
         private static UInt32 HashStream(Stream stream) {

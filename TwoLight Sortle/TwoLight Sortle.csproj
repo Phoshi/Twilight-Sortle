@@ -53,7 +53,9 @@
     <Compile Include="listExtensions.cs" />
     <Compile Include="Load.cs" />
     <Compile Include="MurmurHash.cs" />
+    <Compile Include="objectExtensions.cs" />
     <Compile Include="Search.cs" />
+    <Compile Include="Settings.cs" />
     <Compile Include="stringExtensions.cs" />
     <Compile Include="Tag.cs" />
     <Compile Include="TwilightSortle.cs">
