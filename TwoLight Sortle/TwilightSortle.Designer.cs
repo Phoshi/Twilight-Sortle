@@ -23,6 +23,7 @@
         /// the contents of this method with the code editor.
         /// </summary>
         private void InitializeComponent() {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(TwilightSortle));
             this.splitListDetails = new System.Windows.Forms.SplitContainer();
             this.listIndexLabel = new System.Windows.Forms.Label();
             this.clearFilterButton = new System.Windows.Forms.Button();
@@ -33,6 +34,7 @@
             this.mainListHeaderDirectory = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.mainListHeaderFilesize = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.mainListHeaderDimensions = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
+            this.mainListHeaderUploaded = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.splitImageTags = new System.Windows.Forms.SplitContainer();
             this.previewImage = new System.Windows.Forms.PictureBox();
@@ -72,9 +74,8 @@
             this.buildTagDatabaseFilenamesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.renameTagToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.setAsWallpaperToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.downloadToToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.uploadToToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.imagurToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.imgurToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.workingPanel = new System.Windows.Forms.Panel();
             this.workingDescription = new System.Windows.Forms.Label();
             this.workingLabel = new System.Windows.Forms.Label();
@@ -90,6 +91,9 @@
             this.preferencesValidFileTypesList = new System.Windows.Forms.ListView();
             this.preferencesEnabledCheck = new System.Windows.Forms.CheckBox();
             this.folderBrowser = new System.Windows.Forms.FolderBrowserDialog();
+            this.fileActionPanel = new System.Windows.Forms.Panel();
+            this.moveDirUpButton = new System.Windows.Forms.Button();
+            this.moveDirDownButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.splitListDetails)).BeginInit();
             this.splitListDetails.Panel1.SuspendLayout();
             this.splitListDetails.Panel2.SuspendLayout();
@@ -173,7 +177,8 @@
             this.mainListHeaderFilename,
             this.mainListHeaderDirectory,
             this.mainListHeaderFilesize,
-            this.mainListHeaderDimensions});
+            this.mainListHeaderDimensions,
+            this.mainListHeaderUploaded});
             this.mainList.FullRowSelect = true;
             this.mainList.HideSelection = false;
             this.mainList.Location = new System.Drawing.Point(13, 26);
@@ -209,6 +214,11 @@
             // 
             this.mainListHeaderDimensions.Tag = "1";
             this.mainListHeaderDimensions.Text = "Dimensions";
+            // 
+            // mainListHeaderUploaded
+            // 
+            this.mainListHeaderUploaded.Tag = "2";
+            this.mainListHeaderUploaded.Text = "External URL";
             // 
             // menuStrip1
             // 
@@ -270,6 +280,7 @@
             this.tagsHeaderTag,
             this.tagsHeaderNumItems});
             this.tagList.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tagList.FullRowSelect = true;
             this.tagList.Location = new System.Drawing.Point(0, 0);
             this.tagList.Name = "tagList";
             this.tagList.Size = new System.Drawing.Size(181, 363);
@@ -353,7 +364,6 @@
             this.searchOptionsToolStripMenuItem,
             this.sortToolStripMenuItem,
             this.manageToolStripMenuItem,
-            this.downloadToToolStripMenuItem,
             this.uploadToToolStripMenuItem});
             this.menuStrip2.Location = new System.Drawing.Point(0, 0);
             this.menuStrip2.Name = "menuStrip2";
@@ -492,12 +502,14 @@
             this.buildToolStripMenuItem.Name = "buildToolStripMenuItem";
             this.buildToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
             this.buildToolStripMenuItem.Text = "Build";
+            this.buildToolStripMenuItem.Click += new System.EventHandler(this.button_Click);
             // 
             // removeToolStripMenuItem
             // 
             this.removeToolStripMenuItem.Name = "removeToolStripMenuItem";
             this.removeToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
             this.removeToolStripMenuItem.Text = "Remove";
+            this.removeToolStripMenuItem.Click += new System.EventHandler(this.button_Click);
             // 
             // manageToolStripMenuItem
             // 
@@ -532,6 +544,7 @@
             this.deleteFileToolStripMenuItem.Name = "deleteFileToolStripMenuItem";
             this.deleteFileToolStripMenuItem.Size = new System.Drawing.Size(237, 22);
             this.deleteFileToolStripMenuItem.Text = "Delete File";
+            this.deleteFileToolStripMenuItem.Click += new System.EventHandler(this.button_Click);
             // 
             // toolStripSeparator1
             // 
@@ -556,26 +569,22 @@
             this.setAsWallpaperToolStripMenuItem.Name = "setAsWallpaperToolStripMenuItem";
             this.setAsWallpaperToolStripMenuItem.Size = new System.Drawing.Size(237, 22);
             this.setAsWallpaperToolStripMenuItem.Text = "Set as Wallpaper";
-            // 
-            // downloadToToolStripMenuItem
-            // 
-            this.downloadToToolStripMenuItem.Name = "downloadToToolStripMenuItem";
-            this.downloadToToolStripMenuItem.Size = new System.Drawing.Size(89, 20);
-            this.downloadToToolStripMenuItem.Text = "Download To";
+            this.setAsWallpaperToolStripMenuItem.Click += new System.EventHandler(this.button_Click);
             // 
             // uploadToToolStripMenuItem
             // 
             this.uploadToToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.imagurToolStripMenuItem});
+            this.imgurToolStripMenuItem});
             this.uploadToToolStripMenuItem.Name = "uploadToToolStripMenuItem";
             this.uploadToToolStripMenuItem.Size = new System.Drawing.Size(73, 20);
             this.uploadToToolStripMenuItem.Text = "Upload To";
             // 
-            // imagurToolStripMenuItem
+            // imgurToolStripMenuItem
             // 
-            this.imagurToolStripMenuItem.Name = "imagurToolStripMenuItem";
-            this.imagurToolStripMenuItem.Size = new System.Drawing.Size(105, 22);
-            this.imagurToolStripMenuItem.Text = "Imgur";
+            this.imgurToolStripMenuItem.Name = "imgurToolStripMenuItem";
+            this.imgurToolStripMenuItem.Size = new System.Drawing.Size(105, 22);
+            this.imgurToolStripMenuItem.Text = "Imgur";
+            this.imgurToolStripMenuItem.Click += new System.EventHandler(this.button_Click);
             // 
             // workingPanel
             // 
@@ -609,19 +618,21 @@
             // preferencesPanel
             // 
             this.preferencesPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.preferencesPanel.Controls.Add(this.moveDirDownButton);
+            this.preferencesPanel.Controls.Add(this.moveDirUpButton);
             this.preferencesPanel.Controls.Add(this.preferencesSaveButton);
             this.preferencesPanel.Controls.Add(this.preferencesDirectoryList);
             this.preferencesPanel.Controls.Add(this.preferencesControls);
             this.preferencesPanel.Location = new System.Drawing.Point(418, 12);
             this.preferencesPanel.Name = "preferencesPanel";
-            this.preferencesPanel.Size = new System.Drawing.Size(257, 473);
+            this.preferencesPanel.Size = new System.Drawing.Size(297, 473);
             this.preferencesPanel.TabIndex = 6;
             this.preferencesPanel.Visible = false;
             // 
             // preferencesSaveButton
             // 
             this.preferencesSaveButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.preferencesSaveButton.Location = new System.Drawing.Point(207, 445);
+            this.preferencesSaveButton.Location = new System.Drawing.Point(247, 445);
             this.preferencesSaveButton.Name = "preferencesSaveButton";
             this.preferencesSaveButton.Size = new System.Drawing.Size(39, 23);
             this.preferencesSaveButton.TabIndex = 2;
@@ -635,7 +646,7 @@
                         | System.Windows.Forms.AnchorStyles.Right)));
             this.preferencesDirectoryList.Location = new System.Drawing.Point(3, 12);
             this.preferencesDirectoryList.Name = "preferencesDirectoryList";
-            this.preferencesDirectoryList.Size = new System.Drawing.Size(244, 176);
+            this.preferencesDirectoryList.Size = new System.Drawing.Size(238, 176);
             this.preferencesDirectoryList.TabIndex = 3;
             this.preferencesDirectoryList.UseCompatibleStateImageBehavior = false;
             this.preferencesDirectoryList.View = System.Windows.Forms.View.List;
@@ -650,7 +661,7 @@
             this.preferencesControls.Enabled = false;
             this.preferencesControls.Location = new System.Drawing.Point(3, 195);
             this.preferencesControls.Name = "preferencesControls";
-            this.preferencesControls.Size = new System.Drawing.Size(249, 253);
+            this.preferencesControls.Size = new System.Drawing.Size(289, 253);
             this.preferencesControls.TabIndex = 0;
             this.preferencesControls.TabStop = false;
             this.preferencesControls.Text = "No Directory Loaded";
@@ -667,7 +678,7 @@
             this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panel1.Location = new System.Drawing.Point(3, 18);
             this.panel1.Name = "panel1";
-            this.panel1.Size = new System.Drawing.Size(243, 232);
+            this.panel1.Size = new System.Drawing.Size(283, 232);
             this.panel1.TabIndex = 0;
             // 
             // label2
@@ -690,10 +701,14 @@
             // 
             // preferencesSortPath
             // 
+            this.preferencesSortPath.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
             this.preferencesSortPath.Location = new System.Drawing.Point(7, 157);
             this.preferencesSortPath.Name = "preferencesSortPath";
-            this.preferencesSortPath.Size = new System.Drawing.Size(232, 22);
+            this.preferencesSortPath.ReadOnly = true;
+            this.preferencesSortPath.Size = new System.Drawing.Size(272, 22);
             this.preferencesSortPath.TabIndex = 3;
+            this.preferencesSortPath.Enter += new System.EventHandler(this.preferencesSortPath_Enter);
             // 
             // preferencesRecursiveCheck
             // 
@@ -708,10 +723,12 @@
             // 
             // preferencesValidFileTypesList
             // 
+            this.preferencesValidFileTypesList.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
             this.preferencesValidFileTypesList.LabelEdit = true;
             this.preferencesValidFileTypesList.Location = new System.Drawing.Point(6, 25);
             this.preferencesValidFileTypesList.Name = "preferencesValidFileTypesList";
-            this.preferencesValidFileTypesList.Size = new System.Drawing.Size(235, 97);
+            this.preferencesValidFileTypesList.Size = new System.Drawing.Size(275, 97);
             this.preferencesValidFileTypesList.TabIndex = 1;
             this.preferencesValidFileTypesList.UseCompatibleStateImageBehavior = false;
             this.preferencesValidFileTypesList.View = System.Windows.Forms.View.List;
@@ -725,14 +742,46 @@
             this.preferencesEnabledCheck.TabIndex = 0;
             this.preferencesEnabledCheck.Text = "Enabled?";
             this.preferencesEnabledCheck.UseVisualStyleBackColor = true;
-            this.preferencesEnabledCheck.CheckedChanged += new System.EventHandler(this.preferencesEnabledCheck_CheckedChanged);
             this.preferencesEnabledCheck.Click += new System.EventHandler(this.button_Click);
+            // 
+            // fileActionPanel
+            // 
+            this.fileActionPanel.Location = new System.Drawing.Point(0, 59);
+            this.fileActionPanel.Name = "fileActionPanel";
+            this.fileActionPanel.Size = new System.Drawing.Size(465, 335);
+            this.fileActionPanel.TabIndex = 7;
+            this.fileActionPanel.Visible = false;
+            this.fileActionPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.fileActionPanel_Paint);
+            // 
+            // moveDirUpButton
+            // 
+            this.moveDirUpButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.moveDirUpButton.Location = new System.Drawing.Point(247, 14);
+            this.moveDirUpButton.Name = "moveDirUpButton";
+            this.moveDirUpButton.Size = new System.Drawing.Size(45, 23);
+            this.moveDirUpButton.TabIndex = 4;
+            this.moveDirUpButton.Text = "Up";
+            this.moveDirUpButton.UseVisualStyleBackColor = true;
+            this.moveDirUpButton.Click += new System.EventHandler(this.button_Click);
+            // 
+            // moveDirDownButton
+            // 
+            this.moveDirDownButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.moveDirDownButton.Location = new System.Drawing.Point(247, 46);
+            this.moveDirDownButton.Name = "moveDirDownButton";
+            this.moveDirDownButton.Size = new System.Drawing.Size(45, 23);
+            this.moveDirDownButton.TabIndex = 5;
+            this.moveDirDownButton.Text = "Down";
+            this.moveDirDownButton.UseVisualStyleBackColor = true;
+            this.moveDirDownButton.Click += new System.EventHandler(this.button_Click);
             // 
             // TwilightSortle
             // 
+            this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(812, 500);
+            this.Controls.Add(this.fileActionPanel);
             this.Controls.Add(this.preferencesPanel);
             this.Controls.Add(this.workingPanel);
             this.Controls.Add(this.addTagPanel);
@@ -740,11 +789,16 @@
             this.Controls.Add(this.menuStrip2);
             this.DoubleBuffered = true;
             this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "TwilightSortle";
             this.Text = "Twilight Sortle";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.TwilightSortle_FormClosing);
             this.Load += new System.EventHandler(this.TwilightSortle_Load);
+            this.DragDrop += new System.Windows.Forms.DragEventHandler(this.TwilightSortle_DragDrop);
+            this.DragEnter += new System.Windows.Forms.DragEventHandler(this.TwilightSortle_DragEnter);
+            this.DragOver += new System.Windows.Forms.DragEventHandler(this.TwilightSortle_DragOver);
+            this.DragLeave += new System.EventHandler(this.TwilightSortle_DragLeave);
             this.Resize += new System.EventHandler(this.TwilightSortle_Resize);
             this.splitListDetails.Panel1.ResumeLayout(false);
             this.splitListDetails.Panel1.PerformLayout();
@@ -814,9 +868,8 @@
         private System.Windows.Forms.ToolStripMenuItem buildTagDatabaseFilenamesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem renameTagToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem setAsWallpaperToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem downloadToToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem uploadToToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem imagurToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem imgurToolStripMenuItem;
         private System.Windows.Forms.SplitContainer splitImageTags;
         private System.Windows.Forms.PictureBox previewImage;
         private System.Windows.Forms.ListView tagList;
@@ -844,6 +897,10 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TextBox preferencesSortPath;
         private System.Windows.Forms.FolderBrowserDialog folderBrowser;
+        private System.Windows.Forms.Panel fileActionPanel;
+        private System.Windows.Forms.ColumnHeader mainListHeaderUploaded;
+        private System.Windows.Forms.Button moveDirDownButton;
+        private System.Windows.Forms.Button moveDirUpButton;
 
     }
 }

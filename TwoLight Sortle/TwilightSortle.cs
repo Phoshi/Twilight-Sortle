@@ -2,10 +2,15 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using Extensions;
@@ -22,17 +27,54 @@ namespace TwoLight_Sortle {
         private Dictionary<object, Action> actions = new Dictionary<object, Action>();
         private Settings settings;
         private bool startupComplete;
+        private bool saving = true;
         #endregion
 
         public TwilightSortle() {
             InitializeComponent();
             setupActions();
             mainList.DoubleBuffer();
+            fileActionPanel.DoubleBuffer();
             TwoLight_Sortle.Load.FilesCache =
                 TwoLight_Sortle.Load.FilesCache.LoadFromDisk<Dictionary<UInt32, Item>>(
                     Path.Combine(Application.UserAppDataPath, "FilesCache"));
+            IEnumerable<Item> deletedItems = from kvPair in TwoLight_Sortle.Load.FilesCache
+                                      where !kvPair.Value.Exists
+                                      select kvPair.Value;
+            foreach (Item item in deletedItems) {
+                item.Delete();
+            }
+            TwoLight_Sortle.Load.FilesCache =
+                TwoLight_Sortle.Load.FilesCache.Where(kvPair => kvPair.Value.Exists).ToDictionary(kvPair => kvPair.Key,
+                                                                                                  kvPair => kvPair.Value);
             Tags.TagList = Tags.TagList.LoadFromDisk<Dictionary<string, Tag>>(Path.Combine(
                 Application.UserAppDataPath, "Tags"));
+            if (isAdmin()) {
+                this.Text = "{0} (Administrator)".With(this.Text);
+            }
+        }
+
+        private bool isAdmin() {
+            WindowsIdentity wi = WindowsIdentity.GetCurrent();
+            WindowsPrincipal wp = new WindowsPrincipal(wi);
+            return wp.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
+        private void restartWithAdminRights() {
+            MessageBox.Show(
+                "This action requires administrative rights. Twilight Sortle will now attempt to restart with the required rights.");
+            try {
+                save();
+                saving = false;
+                Process.Start(new ProcessStartInfo() {
+                    Verb = "runas",
+                    FileName = Application.ExecutablePath
+                });
+            }
+            catch (Exception) {
+                return;
+            }
+            this.Close();
         }
 
         private void setupActions() {
@@ -40,6 +82,7 @@ namespace TwoLight_Sortle {
             actions[addTagButton] = toggleAddTagPanel;
             actions[clearFilterButton] = (() => searchBox.Text = "");
             actions[removeTagButton] = removeSelectedTag;
+            actions[deleteFileToolStripMenuItem] = deleteSelectedFiles;
             actions[preferencesSaveButton] = togglePreferences;
             actions[preferencesEnabledCheck] = (() => {
                                                     int index = preferencesGetSelectedDirectory();
@@ -55,6 +98,29 @@ namespace TwoLight_Sortle {
                                                           dir.Recursive = !dir.Recursive;
                                                       }
                                                   });
+            actions[moveDirUpButton] = (() => {
+                                            int getSelectedDirectory = preferencesGetSelectedDirectory();
+                                            if (getSelectedDirectory > 0) {
+                                                Directory tempDir = settings.Directories.ElementAt(getSelectedDirectory);
+                                                settings.Directories[getSelectedDirectory] =
+                                                    settings.Directories[getSelectedDirectory - 1];
+                                                settings.Directories[getSelectedDirectory - 1] = tempDir;
+                                            }
+                                            rebuildDirectoriesList();
+                                        });
+
+            actions[moveDirDownButton] = (() => {
+                                              int getSelectedDirectory = preferencesGetSelectedDirectory();
+                                              int numDirectories = settings.Directories.Count;
+                                              if (getSelectedDirectory < numDirectories - 1) {
+                                                  Directory tempDir =
+                                                      settings.Directories.ElementAt(getSelectedDirectory);
+                                                  settings.Directories[getSelectedDirectory] =
+                                                      settings.Directories[getSelectedDirectory + 1];
+                                                  settings.Directories[getSelectedDirectory + 1] = tempDir;
+                                              }
+                                              rebuildDirectoriesList();
+                                          });
 
             //Menu Items
             actions[exitToolStripMenuItem] = Close;
@@ -64,6 +130,70 @@ namespace TwoLight_Sortle {
             actions[addTagToolStripMenuItem] = toggleAddTagPanel;
             actions[removeToolStripMenuItem] = removeSelectedTag;
             actions[preferencesToolStripMenuItem] = togglePreferences;
+            actions[buildToolStripMenuItem] = updateSortedTree;
+            actions[removeToolStripMenuItem] = removeSortedTree;
+            actions[imgurToolStripMenuItem] = uploadImages;
+            actions[setAsWallpaperToolStripMenuItem] = setSelectedAsWallpaper;
+        }
+
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern Int32 SystemParametersInfo(
+            UInt32 action, UInt32 uParam, String vParam, UInt32 winIni);
+
+        private const UInt32 SPI_SETDESKWALLPAPER = 0x14;
+        private const UInt32 SPIF_UPDATEINIFILE = 0x01;
+        private const UInt32 SPIF_SENDWININICHANGE = 0x02;
+
+        private void setSelectedAsWallpaper() {
+            if (getSelectedItems().Count == 0) {
+                return;
+            }
+            string path = getSelectedItems()[0].Path;
+            string newPath = Path.GetTempPath();
+            string oldName = Path.GetFileNameWithoutExtension(path);
+            string newName = Path.Combine(newPath, oldName + ".bmp");
+            Image image = Image.FromFile(path);
+            image.Save(newName, ImageFormat.Bmp);
+            image.Dispose();
+            int result = SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, newName,
+                                              SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE);
+        }
+
+        private void uploadImages() {
+            List<Item> selectedItems = getSelectedItems();
+            List<string> urls = new List<string>();
+            Action action = (() => {
+                                 foreach (Item selectedItem in selectedItems) {
+                                     urls.Add(selectedItem.UploadedUrl);
+                                 }
+                             });
+            Action after = (() => Clipboard.SetText(String.Join(" ", urls)));
+            runLongOperation(action, after, "Uploading {0} files".With(selectedItems.Count));
+        }
+
+        private void removeSortedTree() {
+            Action action = (() => {
+                                 foreach (Directory enabledDirectory in settings.EnabledDirectories) {
+                                     if (enabledDirectory.SortPath != null) {
+                                         try {
+                                             System.IO.Directory.Delete(enabledDirectory.SortPath, true);
+                                         }
+                                         finally {
+                                             enabledDirectory.Items.ForEach(item => item.Invalidated = true);
+                                         }
+                                     }
+                                 }
+                             });
+            Action after = refreshListingWithSearch;
+            runLongOperation(action, after, "Removing sorted tree");
+        }
+
+        private void deleteSelectedFiles() {
+            List<Item> items = getSelectedItems();
+            items.ForEach(item => item.Delete());
+            items.ForEach(item=>settings.GetDirectory(item.Directory).UpdateFilepaths());
+            refreshListingWithSearch();
         }
 
         private void updateSearchOptionsMenuCheckedStatus() {
@@ -99,8 +229,11 @@ namespace TwoLight_Sortle {
         private void removeSelectedTag() {
             runLongOperation(null,
                              (() => {
-                                  getSelectedItems().ForEach(item => item.Remove(getSelectedTag()));
-                                  updateMainListing(itemList, true);
+                                 if (getSelectedTag() != null && getSelectedItems().Count > 0) {
+                                     getSelectedItems().ForEach(item => item.Remove(getSelectedTag()));
+                                     updateTagList(getSelectedItems().First());
+                                     updateMainListing(itemList, true);
+                                 }
                               })
                              , "Removing Selected Tag");
         }
@@ -152,6 +285,7 @@ namespace TwoLight_Sortle {
             item.SubItems.Add(image.Directory);
             item.SubItems.Add(image.Filesize);
             item.SubItems.Add("{0}x{1}".With(image.Dimensions.Width, image.Dimensions.Height));
+            item.SubItems.Add(image.ExternalUrl);
             return item;
         }
 
@@ -189,11 +323,19 @@ namespace TwoLight_Sortle {
             while (mainList.Items.Count > i) {
                 mainList.Invoke((Action)(() => mainList.Items.RemoveAt(mainList.Items.Count - 1)));
             }
+
             bool colourSwitch = false;
             foreach (ListViewItem item in mainList.Items) {
-                item.BackColor = colourSwitch ? Color.White : Color.FromArgb(240, 240, 240);
+                if (!itemList[item.Index].Invalidated) {
+                    item.BackColor = colourSwitch ? Color.White : Color.FromArgb(240, 240, 240);
+                }
+                else {
+                    item.BackColor = Color.Gray;
+                    item.ForeColor = Color.White;
+                }
                 colourSwitch = !colourSwitch;
             }
+
             mainList.Invoke((Action)(() => mainList.EndUpdate()));
             listIndexLabel.Invoke((Action)updateIndexLabel);
         }
@@ -223,29 +365,20 @@ namespace TwoLight_Sortle {
             detailsUpdateThread.Start();
         }
 
-        private void updateTagList(Item selectedItem) {
-            tagList.Invoke((Action)(() => tagList.Items.Clear()));
-            foreach (Tag tag in selectedItem.Tags) {
-                ListViewItem newItem = new ListViewItem(tag.Name);
-                newItem.SubItems.Add(tag.Count.ToString());
-                tagList.Invoke((Action)(() => tagList.Items.Add(newItem)));
+        private void refreshListingWithSearch() {
+            search = new Search(allEnabledItems(), searchBox.Text, settings.SearchOptions);
+            updateMainListing(search.Items, true);
+        }
+
+        private void save() {
+            if (saving) {
+                TwoLight_Sortle.Load.FilesCache.SaveToDisk(Path.Combine(Application.UserAppDataPath, "FilesCache"));
+                TwoLight_Sortle.Tags.TagList.SaveToDisk(Path.Combine(Application.UserAppDataPath, "Tags"));
+                settings.SaveToDisk(Path.Combine(Application.UserAppDataPath, "Settings"));
             }
         }
 
-        private void updateTagPanelPosition() {
-            if (!showingTagPanel) {
-                addTagPanel.Top = this.Bottom;
-                _tagCompletePosition = -1;
-                addTagFilter.Text = "";
-            }
-            else {
-                addTagPanel.Top = this.Bottom - addTagPanel.Height;
-            }
-            updateTagAutocompleteList(addTagFilter.Text, "");
-            addTagPanel.Width = this.Width;
-            addTagPanel.Left = 0;
-        }
-
+        #region Working Panel
         private void updateWorkingPanelPosition(string reason = "") {
             if (workingThread.IsBusy) {
                 workingPanel.Visible = true;
@@ -268,16 +401,78 @@ namespace TwoLight_Sortle {
 
             }
         }
+        #endregion
 
-        private void refreshListingWithSearch() {
-            search = new Search(allEnabledItems(), searchBox.Text, settings.SearchOptions);
-            updateMainListing(search.Items, true);
-        }
-
+        #region File Sorting
         private void updateSortedTree() {
-            var filesToSort = from file in itemList where file.Invalidated select file;
+            if (!isAdmin()) {
+                restartWithAdminRights();
+            }
+            Action action = (() => {
+                                 Dictionary<string, List<string>> aprioriData = new Dictionary<string, List<string>>();
+                                 foreach (Item item in itemList) {
+                                     aprioriData[item.Path] = (from tag in item.Tags select tag.Name).ToList();
+                                 }
+                                 Apriori.Apriori apriori = new Apriori.Apriori(aprioriData, 5);
+                                 List<List<string>> frequentSets = apriori.getFrequentSets();
+                                 var filesToSort = from file in itemList where file.Invalidated select file;
+                                 foreach (Item file in filesToSort) {
+                                     createSortedTree(file, frequentSets);
+                                 }
+                             });
+            Action after = refreshListingWithSearch;
+            runLongOperation(action, after, "Updating Sorted Tree");
         }
 
+        private void createSortedTree(Item item, List<List<string>> frequentSets) {
+            var combinations = getAllCombinations(item.Tags, 4);
+            List<List<Tag>> validCombinations = new List<List<Tag>>();
+            foreach (List<string> frequentSet in frequentSets) {
+                foreach (List<Tag> combination in combinations) {
+                    List<String> strCombination = (from tag in combination select tag.Name).ToList();
+                    if (frequentSet.Intersect(strCombination).Count() == strCombination.Count) {
+                        validCombinations.Add(combination);
+                    }
+                }
+            }
+            if (validCombinations.Count == 0) {
+                var fakeCombination = new List<Tag>() {Tags.GetTag("Misc.")};
+                combinations.Add(fakeCombination);
+                validCombinations.Add(fakeCombination);
+            }
+            foreach (List<Tag> combination in combinations) {
+                if (validCombinations.Contains(combination)) {
+                    string rootSortPath = settings.GetDirectory(item.Directory).SortPath;
+                    if (rootSortPath == null) {
+                        continue;
+                    }
+                    string tagsPath = System.IO.Path.Combine((from tag in combination select tag.Name).ToArray());
+                    string newPath = Path.Combine(rootSortPath, tagsPath, item.Filename + item.Extension);
+                    item.Link(newPath);
+                }
+            }
+        }
+
+        private List<List<Tag>> getAllCombinations(IEnumerable<Tag> rootList, int depth, List<Tag> remainingList = null) {
+            if (remainingList == null) {
+                remainingList = new List<Tag>();
+            }
+            List<List<Tag>> combinations = new List<List<Tag>>();
+            if (remainingList.Count > 0) {
+                combinations.Add(remainingList);
+            }
+            foreach (Tag tag in rootList) {
+                List<Tag> newList = new List<Tag>(rootList);
+                newList.Remove(tag);
+                List<Tag> newRemaining = new List<Tag>(remainingList);
+                newRemaining.Add(tag);
+                if (newRemaining.Count < depth) {
+                    combinations.AddRange(getAllCombinations(newList, depth, newRemaining));
+                }
+            }
+            return combinations;
+        }
+        #endregion
 
         #region Preferences Panel
         private void rebuildDirectoriesList() {
@@ -332,6 +527,9 @@ namespace TwoLight_Sortle {
         private int preferencesGetSelectedDirectory() {
             if (preferencesDirectoryList.SelectedIndices.Count > 0) {
                 int index = preferencesDirectoryList.SelectedIndices[0];
+                if (index >= settings.Directories.Count) {
+                    return -1;
+                }
                 return index;
             }
             return -1;
@@ -431,6 +629,7 @@ namespace TwoLight_Sortle {
                 List<string> newTags = addTagFilter.Text.Split(' ').ToList();
                 getSelectedItems().ForEach(item => newTags.ForEach(item.Add));
                 updateTagList(getSelectedItems()[0]);
+                refreshListingWithSearch();
                 toggleAddTagPanel();
                 e.Handled = true;
                 e.SuppressKeyPress = true;
@@ -439,6 +638,31 @@ namespace TwoLight_Sortle {
                 toggleAddTagPanel();
                 e.SuppressKeyPress = e.Handled = true;
             }
+        }
+
+
+        private void updateTagList(Item selectedItem) {
+            tagList.Invoke((Action)(() => tagList.Items.Clear()));
+            foreach (Tag tag in selectedItem.Tags) {
+                ListViewItem newItem = new ListViewItem(tag.Name);
+                newItem.SubItems.Add(tag.Count.ToString());
+                tagList.Invoke((Action)(() => tagList.Items.Add(newItem)));
+            }
+        }
+
+        private void updateTagPanelPosition() {
+            if (!showingTagPanel) {
+                addTagPanel.Top = this.Bottom;
+                _tagCompletePosition = -1;
+                addTagFilter.Text = "";
+            }
+            else {
+                addTagPanel.Top = this.Bottom - addTagPanel.Height;
+                addTagFilter.Select();
+            }
+            updateTagAutocompleteList(addTagFilter.Text, "");
+            addTagPanel.Width = this.Width;
+            addTagPanel.Left = 0;
         }
 
         #endregion
@@ -459,15 +683,14 @@ namespace TwoLight_Sortle {
         }
 
         private void TwilightSortle_FormClosing(object sender, FormClosingEventArgs e) {
-            TwoLight_Sortle.Load.FilesCache.SaveToDisk(Path.Combine(Application.UserAppDataPath, "FilesCache"));
-            TwoLight_Sortle.Tags.TagList.SaveToDisk(Path.Combine(Application.UserAppDataPath, "Tags"));
-            settings.SaveToDisk(Path.Combine(Application.UserAppDataPath, "Settings"));
+            save();
         }
 
         private void TwilightSortle_Resize(object sender, EventArgs e) {
             updateTagPanelPosition();
-            updateWorkingPanelPosition();
             updatePreferencesPanel();
+            updateFileActionsPanel();
+            updateWorkingPanelPosition();
         }
         #endregion
 
@@ -477,7 +700,7 @@ namespace TwoLight_Sortle {
         }
 
         private void mainList_SelectedIndexChanged(object sender, EventArgs e) {
-            if (mainList.SelectedIndices.Count > 0) {
+            if (mainList.SelectedIndices.Count == 1) {
                 updatePreviewImage(mainList.SelectedIndices[0]);
                 updateIndexLabel();
             }
@@ -502,6 +725,14 @@ namespace TwoLight_Sortle {
             }
 
             resizing = false;
+        }
+
+
+        private void preferencesSortPath_Enter(object sender, EventArgs e) {
+            if (folderBrowser.ShowDialog() == DialogResult.OK) {
+                preferencesSortPath.Text = folderBrowser.SelectedPath;
+                settings.Directories.ElementAt(preferencesGetSelectedDirectory()).SortPath = folderBrowser.SelectedPath;
+            }
         }
 
         #endregion
@@ -552,8 +783,105 @@ namespace TwoLight_Sortle {
         }
         #endregion
 
-        private void preferencesEnabledCheck_CheckedChanged(object sender, EventArgs e) {
-            /**/
+        #region File Downloading
+        private List<string> dragged;
+        private float fileItemHeight;
+        private void TwilightSortle_DragEnter(object sender, DragEventArgs e) {
+            dragged = new List<string>();
+            if (e.Data.GetDataPresent(DataFormats.Html)) {
+                string html = (String) e.Data.GetData(DataFormats.Html);
+                MatchCollection matches = Regex.Matches(html, @"<a [^>]*href=[""'](.*?)[""']");
+                foreach (Match match in matches) {
+                    if (Regex.IsMatch(match.Groups[1].Value, @"\.(jpg|jpeg|png|gif)$")) {
+                        dragged.Add(match.Groups[1].Value);
+                    }
+                }
+                if (matches.Count == 0) {
+                    matches = Regex.Matches(html, @"<img [^>]*src=""(.*?)""");
+                    foreach (Match match in matches) {
+                        dragged.Add(match.Groups[1].Value);
+                    }
+                }
+                updateFileActionsPanel();
+                //e.Effect = DragDropEffects.Copy;
+                fileActionPanel.Visible = true;
+            }
+            else {
+                e.Effect = DragDropEffects.None;
+            }
+            Console.WriteLine("Main Form Drag Enter");
         }
+
+        private void TwilightSortle_DragLeave(object sender, EventArgs e) {
+                fileActionPanel.Visible = false;
+        }
+
+        private void updateFileActionsPanel() {
+            fileActionPanel.Width = (int) (ClientRectangle.Width * 0.9f);
+            fileActionPanel.Left = (int) (ClientRectangle.Width * 0.05f);
+        }
+
+        private void fileActionPanel_Paint(object sender, PaintEventArgs e) {
+            Console.WriteLine("File Panel Redraw");
+            Point clientMousePosition = fileActionPanel.PointToClient(MousePosition);
+            float currentHeight = 0f;
+            const float spacing = 5.0f;
+            Brush brush = new SolidBrush(Color.Black);
+            Brush bgBrush = new SolidBrush(Color.LightGray);
+            Brush selectedBgBrush = new SolidBrush(Color.LightPink);
+            Font font = new Font(this.Font.FontFamily, 16);
+            foreach (Directory directory in settings.Directories) {
+                float rectHeight = directory.Path.Height(font);
+                string sortString = "Not sorting.";
+                if (directory.SortPath != null) {
+                    sortString = @"Sorting to: ""{0}""".With(directory.SortPath);
+                }
+                rectHeight += spacing;
+                rectHeight += sortString.Height(this.Font);
+                rectHeight += spacing;
+                fileItemHeight = rectHeight;
+                Rectangle backRect = new Rectangle(0, (int) currentHeight, fileActionPanel.Width, (int) rectHeight);
+                e.Graphics.FillRectangle(backRect.Contains(clientMousePosition) ? selectedBgBrush : bgBrush, backRect);
+                e.Graphics.DrawString(directory.Path, font, brush, 0.0f, currentHeight);
+                currentHeight += directory.Path.Height(font);
+                currentHeight += spacing;
+                e.Graphics.DrawString(sortString, this.Font, brush, 0, currentHeight);
+                currentHeight += sortString.Height(this.Font);
+                currentHeight += spacing;
+
+            }
+        }
+
+        private void TwilightSortle_DragOver(object sender, DragEventArgs e) {
+            if (dragged.Count == 0) {
+                return;
+            }
+
+            if (fileActionPanel.ClientRectangle.Contains(fileActionPanel.PointToClient(MousePosition))) {
+                e.Effect = DragDropEffects.Copy;
+                fileActionPanel.Invalidate();
+            }
+            else {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        private void TwilightSortle_DragDrop(object sender, DragEventArgs e) {
+            if (e.Effect == DragDropEffects.Copy) {
+                Point clientMousePosition = fileActionPanel.PointToClient(MousePosition);
+                int index = (int) (clientMousePosition.Y / fileItemHeight);
+                Action action = (() => {
+                                     dragged.ForEach(url => settings.Directories.ElementAt(index).DownloadTo(url));
+                                     settings.Directories.ElementAt(index).UpdateFilepaths();
+
+                                 });
+                Action later = refreshListingWithSearch;
+                fileActionPanel.Visible = false;
+                runLongOperation(action, later,
+                                 "Downloading {0} file{1}".With(dragged.Count, dragged.Count == 1 ? "" : "s"));
+            }
+        }
+        #endregion
+
     }
 }
