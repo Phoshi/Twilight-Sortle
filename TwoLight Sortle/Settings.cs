@@ -45,6 +45,10 @@ namespace TwoLight_Sortle{
                 _directories.Add(newDirectory);
             }
         }
+        public Directory GetDirectory(string path) {
+            return Directories.FirstOrDefault(directory => directory.Path == path);
+        }
+
         public void RemoveDirectory(Directory directory) {
             _directories.Remove(directory);
         }
