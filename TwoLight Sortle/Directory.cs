@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Security.AccessControl;
 using System.Runtime.Serialization;
 using Extensions;
@@ -48,7 +49,9 @@ namespace TwoLight_Sortle {
         }
         public String SortPath {
             get { return _sortPath; }
+            set { _sortPath = value; }
         }
+
         #endregion
 
         #region Constructors
@@ -61,7 +64,7 @@ namespace TwoLight_Sortle {
                                                    ".jpg",
                                                    ".gif"
                                                };
-            updateFilepaths();
+            UpdateFilepaths();
             assureFilesLoaded();
         }
 
@@ -72,13 +75,13 @@ namespace TwoLight_Sortle {
             _sortPath = info.GetString("_sortPath");
             _recursive = info.GetBoolean("_recursive");
             _enabled = info.GetBoolean("_enabled");
-            updateFilepaths();
+            UpdateFilepaths();
             assureFilesLoaded();
         }
         #endregion
 
         #region Private Methods
-        private void updateFilepaths() {
+        public void UpdateFilepaths() {
             _filepaths = GetFiles(Path).Where(path=> _validFileTypes.Contains(System.IO.Path.GetExtension(path))).ToArray();
             if (_recursive) {
                 List<string> subdirectories = new List<string>();
@@ -96,7 +99,7 @@ namespace TwoLight_Sortle {
             }
 
             HashSet<string> lookup = new HashSet<string>(_filepaths);
-            foreach (KeyValuePair<string, Item> keyValuePair in _items) {
+            foreach (KeyValuePair<string, Item> keyValuePair in new Dictionary<string, Item>(_items)) {
                 if (!lookup.Contains(keyValuePair.Key)) {
                     _items.Remove(keyValuePair.Key);
                 }
@@ -118,7 +121,17 @@ namespace TwoLight_Sortle {
 
         #region Public Methods
         public void DownloadTo(string url) {
-            throw new NotImplementedException();
+            WebClient client = new WebClient();
+            string filename = System.IO.Path.GetFileName(url);
+            if (!String.IsNullOrWhiteSpace(filename)) {
+                filename = System.IO.Path.Combine(this.Path, filename);
+            }
+            else {
+                filename = System.IO.Path.Combine(this.Path, DateTime.Now.Ticks.ToString());
+            }
+            client.DownloadFile(url, filename);
+            Item newImage = Load.Image(filename);
+            newImage.ExternalUrl = url;
         }
         #endregion
 
@@ -126,6 +139,7 @@ namespace TwoLight_Sortle {
 
         private int _position = -1;
         public IEnumerator GetEnumerator() {
+            _position = -1;
             return this;
         }
 
@@ -134,7 +148,6 @@ namespace TwoLight_Sortle {
         }
 
         public bool MoveNext() {
-            //_position++;
             if (++_position < _filepaths.Length) {
                 return true;
             }
