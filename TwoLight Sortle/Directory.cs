@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Security.AccessControl;
@@ -20,6 +21,7 @@ namespace TwoLight_Sortle {
         private string _sortPath;
         private bool _recursive;
         private bool _enabled;
+        private FileSystemWatcher watcher;
         #endregion
 
         #region Public Instance Variables
@@ -38,7 +40,14 @@ namespace TwoLight_Sortle {
         }
         public bool Enabled {
             get { return _enabled; }
-            set { _enabled = value; }
+            set {
+                if (value) {
+                    UpdateFilepaths();
+                    assureFilesLoaded();
+                    setupWatcher();
+                }
+                _enabled = value;
+            }
         }
         public bool Recursive {
             get { return _recursive; }
@@ -64,6 +73,7 @@ namespace TwoLight_Sortle {
                                                    ".jpg",
                                                    ".gif"
                                                };
+            setupWatcher();
             UpdateFilepaths();
             assureFilesLoaded();
         }
@@ -75,35 +85,23 @@ namespace TwoLight_Sortle {
             _sortPath = info.GetString("_sortPath");
             _recursive = info.GetBoolean("_recursive");
             _enabled = info.GetBoolean("_enabled");
-            UpdateFilepaths();
-            assureFilesLoaded();
+            if (_enabled) {
+                setupWatcher();
+                UpdateFilepaths();
+                assureFilesLoaded();
+            }
         }
         #endregion
 
         #region Private Methods
-        public void UpdateFilepaths() {
-            _filepaths = GetFiles(Path).Where(path=> _validFileTypes.Contains(System.IO.Path.GetExtension(path))).ToArray();
-            if (_recursive) {
-                List<string> subdirectories = new List<string>();
-                subdirectories.AddRange(System.IO.Directory.GetDirectories(Path));
-                while (subdirectories.Count > 0) {
-                    string directory = subdirectories.First();
-                    subdirectories.RemoveAt(0);
-                    string[] newFiles = GetFiles(directory).Where(path=> _validFileTypes.Contains(System.IO.Path.GetExtension(path))).ToArray();
-                    string[] newFilePaths = new string[newFiles.Length + _filepaths.Length];
-                    Array.Copy(_filepaths, newFilePaths, _filepaths.Length);
-                    Array.Copy(newFiles, 0, newFilePaths, _filepaths.Length, newFiles.Length);
-                    _filepaths = newFilePaths;
-                    subdirectories.AddRange(System.IO.Directory.GetDirectories(directory));
-                }
-            }
 
-            HashSet<string> lookup = new HashSet<string>(_filepaths);
-            foreach (KeyValuePair<string, Item> keyValuePair in new Dictionary<string, Item>(_items)) {
-                if (!lookup.Contains(keyValuePair.Key)) {
-                    _items.Remove(keyValuePair.Key);
-                }
-            }
+        private void setupWatcher() {
+            watcher = new FileSystemWatcher(Path);
+            watcher.Changed += ((s, e) => UpdateFilepaths());
+            watcher.Created += ((s, e) => UpdateFilepaths());
+            watcher.Deleted += ((s, e) => UpdateFilepaths());
+            watcher.IncludeSubdirectories = _recursive;
+            watcher.EnableRaisingEvents = true;
         }
 
         private string[] GetFiles(string path) {
@@ -120,18 +118,51 @@ namespace TwoLight_Sortle {
         #endregion
 
         #region Public Methods
+        public void UpdateFilepaths() {
+            _filepaths = GetFiles(Path).Where(path => _validFileTypes.Contains(System.IO.Path.GetExtension(path))).ToArray();
+            if (_recursive) {
+                List<string> subdirectories = new List<string>();
+                subdirectories.AddRange(System.IO.Directory.GetDirectories(Path));
+                while (subdirectories.Count > 0) {
+                    string directory = subdirectories.First();
+                    subdirectories.RemoveAt(0);
+                    string[] newFiles = GetFiles(directory).Where(path => _validFileTypes.Contains(System.IO.Path.GetExtension(path))).ToArray();
+                    string[] newFilePaths = new string[newFiles.Length + _filepaths.Length];
+                    Array.Copy(_filepaths, newFilePaths, _filepaths.Length);
+                    Array.Copy(newFiles, 0, newFilePaths, _filepaths.Length, newFiles.Length);
+                    _filepaths = newFilePaths;
+                    subdirectories.AddRange(System.IO.Directory.GetDirectories(directory));
+                }
+            }
+
+            HashSet<string> lookup = new HashSet<string>(_filepaths);
+            foreach (KeyValuePair<string, Item> keyValuePair in new Dictionary<string, Item>(_items)) {
+                if (!lookup.Contains(keyValuePair.Key)) {
+                    _items.Remove(keyValuePair.Key);
+                }
+            }
+        }
+
         public void DownloadTo(string url) {
             WebClient client = new WebClient();
             string filename = System.IO.Path.GetFileName(url);
             if (!String.IsNullOrWhiteSpace(filename)) {
+                if (filename.Contains('?')) {
+                    filename = filename.Split('?')[0];
+                }
                 filename = System.IO.Path.Combine(this.Path, filename);
             }
             else {
                 filename = System.IO.Path.Combine(this.Path, DateTime.Now.Ticks.ToString());
             }
-            client.DownloadFile(url, filename);
-            Item newImage = Load.Image(filename);
-            newImage.ExternalUrl = url;
+            try {
+                client.DownloadFile(url, filename);
+                Item newImage = Load.Image(filename);
+                newImage.ExternalUrl = url;
+            }
+            catch (WebException) {
+                //really nothing much to do
+            }
         }
         #endregion
 
@@ -176,7 +207,12 @@ namespace TwoLight_Sortle {
             return otherDir.Path == Path;
         }
         public override string ToString() {
-            return @"""{0}"" - {1} item{2}".With(Path, _filepaths.Count(), _filepaths.Count()==1 ? "" : "s");
+            if (_filepaths != null) {
+                return @"""{0}"" - {1} item{2}".With(Path, _filepaths.Count(), _filepaths.Count() == 1 ? "" : "s");
+            }
+            else {
+                return @"""{0}"" - Unloaded".With(Path);
+            }
         }
         public void GetObjectData(SerializationInfo info, StreamingContext context) {
             info.AddValue("Path", Path);
