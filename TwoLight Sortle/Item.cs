@@ -100,6 +100,10 @@ namespace TwoLight_Sortle {
             }
         }
 
+        public double Span {
+            get { return Math.Pow(Math.Pow(Dimensions.Width, 2) + Math.Pow(Dimensions.Height, 2), 0.5); }
+        }
+
         /// <summary>
         /// The image's filesize string, in the most appropriate format.
         /// </summary>
@@ -187,6 +191,10 @@ namespace TwoLight_Sortle {
             }
         }
 
+        public bool Uploaded {
+            get { return _uploaded; }
+        }
+
         #endregion
 
 #region Constructors
@@ -226,6 +234,9 @@ namespace TwoLight_Sortle {
         /// <param name="resize">Optional size to fit the image into.</param>
         /// <returns></returns>
         private Image getImage(Size resize = new Size()) {
+            if (!Exists) {
+                return null;
+            }
             Stream imageFile = File.Open(Path, FileMode.Open, FileAccess.Read);
             Image newImage = Image.FromStream(imageFile);
             FrameDimension frameDimension = new FrameDimension(newImage.FrameDimensionsList[0]);
@@ -405,6 +416,18 @@ namespace TwoLight_Sortle {
             else {
                 return "None";
             }
+        }
+
+        public override bool Equals(object obj) {
+            Item other = obj as Item;
+            if (other != null) {
+                return Path == other.Path;
+            }
+            return base.Equals(obj);
+        }
+
+        public override int GetHashCode() {
+            return Path.GetHashCode();
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context) {
