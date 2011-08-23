@@ -35,7 +35,6 @@
             this.mainListHeaderFilesize = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.mainListHeaderDimensions = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.mainListHeaderUploaded = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
-            this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.splitImageTags = new System.Windows.Forms.SplitContainer();
             this.previewImage = new System.Windows.Forms.PictureBox();
             this.splitTagControls = new System.Windows.Forms.SplitContainer();
@@ -44,10 +43,11 @@
             this.tagsHeaderNumItems = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
             this.removeTagButton = new System.Windows.Forms.Button();
             this.addTagButton = new System.Windows.Forms.Button();
+            this.addTagPictureBox = new System.Windows.Forms.PictureBox();
             this.addTagPanel = new System.Windows.Forms.Panel();
             this.addTagList = new System.Windows.Forms.ListBox();
             this.addTagFilter = new System.Windows.Forms.TextBox();
-            this.menuStrip2 = new System.Windows.Forms.MenuStrip();
+            this.mainMenuStrip = new System.Windows.Forms.MenuStrip();
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.preferencesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -80,6 +80,8 @@
             this.workingDescription = new System.Windows.Forms.Label();
             this.workingLabel = new System.Windows.Forms.Label();
             this.preferencesPanel = new System.Windows.Forms.Panel();
+            this.moveDirDownButton = new System.Windows.Forms.Button();
+            this.moveDirUpButton = new System.Windows.Forms.Button();
             this.preferencesSaveButton = new System.Windows.Forms.Button();
             this.preferencesDirectoryList = new System.Windows.Forms.ListView();
             this.preferencesControls = new System.Windows.Forms.GroupBox();
@@ -92,8 +94,6 @@
             this.preferencesEnabledCheck = new System.Windows.Forms.CheckBox();
             this.folderBrowser = new System.Windows.Forms.FolderBrowserDialog();
             this.fileActionPanel = new System.Windows.Forms.Panel();
-            this.moveDirUpButton = new System.Windows.Forms.Button();
-            this.moveDirDownButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.splitListDetails)).BeginInit();
             this.splitListDetails.Panel1.SuspendLayout();
             this.splitListDetails.Panel2.SuspendLayout();
@@ -107,8 +107,9 @@
             this.splitTagControls.Panel1.SuspendLayout();
             this.splitTagControls.Panel2.SuspendLayout();
             this.splitTagControls.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.addTagPictureBox)).BeginInit();
             this.addTagPanel.SuspendLayout();
-            this.menuStrip2.SuspendLayout();
+            this.mainMenuStrip.SuspendLayout();
             this.workingPanel.SuspendLayout();
             this.preferencesPanel.SuspendLayout();
             this.preferencesControls.SuspendLayout();
@@ -117,8 +118,10 @@
             // 
             // splitListDetails
             // 
-            this.splitListDetails.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitListDetails.Location = new System.Drawing.Point(0, 24);
+            this.splitListDetails.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+                        | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.splitListDetails.Location = new System.Drawing.Point(0, 25);
             this.splitListDetails.Name = "splitListDetails";
             // 
             // splitListDetails.Panel1
@@ -127,20 +130,19 @@
             this.splitListDetails.Panel1.Controls.Add(this.clearFilterButton);
             this.splitListDetails.Panel1.Controls.Add(this.searchBox);
             this.splitListDetails.Panel1.Controls.Add(this.mainList);
-            this.splitListDetails.Panel1.Controls.Add(this.menuStrip1);
             // 
             // splitListDetails.Panel2
             // 
             this.splitListDetails.Panel2.Controls.Add(this.splitImageTags);
-            this.splitListDetails.Size = new System.Drawing.Size(812, 476);
-            this.splitListDetails.SplitterDistance = 561;
+            this.splitListDetails.Size = new System.Drawing.Size(1060, 563);
+            this.splitListDetails.SplitterDistance = 732;
             this.splitListDetails.TabIndex = 0;
             // 
             // listIndexLabel
             // 
             this.listIndexLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.listIndexLabel.AutoSize = true;
-            this.listIndexLabel.Location = new System.Drawing.Point(3, 454);
+            this.listIndexLabel.Location = new System.Drawing.Point(3, 682);
             this.listIndexLabel.Name = "listIndexLabel";
             this.listIndexLabel.Size = new System.Drawing.Size(37, 13);
             this.listIndexLabel.TabIndex = 4;
@@ -149,7 +151,7 @@
             // clearFilterButton
             // 
             this.clearFilterButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.clearFilterButton.Location = new System.Drawing.Point(533, 0);
+            this.clearFilterButton.Location = new System.Drawing.Point(704, 3);
             this.clearFilterButton.Name = "clearFilterButton";
             this.clearFilterButton.Size = new System.Drawing.Size(25, 23);
             this.clearFilterButton.TabIndex = 2;
@@ -161,9 +163,9 @@
             // 
             this.searchBox.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
                         | System.Windows.Forms.AnchorStyles.Right)));
-            this.searchBox.Location = new System.Drawing.Point(13, 0);
+            this.searchBox.Location = new System.Drawing.Point(3, 0);
             this.searchBox.Name = "searchBox";
-            this.searchBox.Size = new System.Drawing.Size(514, 22);
+            this.searchBox.Size = new System.Drawing.Size(695, 22);
             this.searchBox.TabIndex = 1;
             this.searchBox.TextChanged += new System.EventHandler(this.searchBox_TextChanged);
             // 
@@ -181,14 +183,18 @@
             this.mainListHeaderUploaded});
             this.mainList.FullRowSelect = true;
             this.mainList.HideSelection = false;
-            this.mainList.Location = new System.Drawing.Point(13, 26);
+            this.mainList.Location = new System.Drawing.Point(3, 28);
             this.mainList.Name = "mainList";
-            this.mainList.Size = new System.Drawing.Size(545, 425);
+            this.mainList.Size = new System.Drawing.Size(726, 532);
             this.mainList.TabIndex = 0;
             this.mainList.UseCompatibleStateImageBehavior = false;
             this.mainList.View = System.Windows.Forms.View.Details;
+            this.mainList.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.mainList_ColumnClick);
+            this.mainList.ItemDrag += new System.Windows.Forms.ItemDragEventHandler(this.mainList_ItemDrag);
             this.mainList.SelectedIndexChanged += new System.EventHandler(this.mainList_SelectedIndexChanged);
             this.mainList.SizeChanged += new System.EventHandler(this.mainList_SizeChanged);
+            this.mainList.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.mainList_MouseDoubleClick);
+            this.mainList.MouseDown += new System.Windows.Forms.MouseEventHandler(this.mainList_MouseDown);
             // 
             // mainListHeaderTags
             // 
@@ -220,14 +226,6 @@
             this.mainListHeaderUploaded.Tag = "2";
             this.mainListHeaderUploaded.Text = "External URL";
             // 
-            // menuStrip1
-            // 
-            this.menuStrip1.Location = new System.Drawing.Point(0, 0);
-            this.menuStrip1.Name = "menuStrip1";
-            this.menuStrip1.Size = new System.Drawing.Size(561, 24);
-            this.menuStrip1.TabIndex = 3;
-            this.menuStrip1.Text = "menuStrip1";
-            // 
             // splitImageTags
             // 
             this.splitImageTags.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -242,8 +240,8 @@
             // splitImageTags.Panel2
             // 
             this.splitImageTags.Panel2.Controls.Add(this.splitTagControls);
-            this.splitImageTags.Size = new System.Drawing.Size(247, 476);
-            this.splitImageTags.SplitterDistance = 109;
+            this.splitImageTags.Size = new System.Drawing.Size(324, 563);
+            this.splitImageTags.SplitterDistance = 128;
             this.splitImageTags.TabIndex = 0;
             // 
             // previewImage
@@ -251,7 +249,7 @@
             this.previewImage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.previewImage.Location = new System.Drawing.Point(0, 0);
             this.previewImage.Name = "previewImage";
-            this.previewImage.Size = new System.Drawing.Size(247, 109);
+            this.previewImage.Size = new System.Drawing.Size(324, 128);
             this.previewImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.previewImage.TabIndex = 0;
             this.previewImage.TabStop = false;
@@ -270,8 +268,8 @@
             // 
             this.splitTagControls.Panel2.Controls.Add(this.removeTagButton);
             this.splitTagControls.Panel2.Controls.Add(this.addTagButton);
-            this.splitTagControls.Size = new System.Drawing.Size(247, 363);
-            this.splitTagControls.SplitterDistance = 181;
+            this.splitTagControls.Size = new System.Drawing.Size(324, 431);
+            this.splitTagControls.SplitterDistance = 237;
             this.splitTagControls.TabIndex = 1;
             // 
             // tagList
@@ -283,7 +281,7 @@
             this.tagList.FullRowSelect = true;
             this.tagList.Location = new System.Drawing.Point(0, 0);
             this.tagList.Name = "tagList";
-            this.tagList.Size = new System.Drawing.Size(181, 363);
+            this.tagList.Size = new System.Drawing.Size(237, 431);
             this.tagList.TabIndex = 0;
             this.tagList.UseCompatibleStateImageBehavior = false;
             this.tagList.View = System.Windows.Forms.View.Details;
@@ -306,7 +304,7 @@
                         | System.Windows.Forms.AnchorStyles.Right)));
             this.removeTagButton.Location = new System.Drawing.Point(4, 33);
             this.removeTagButton.Name = "removeTagButton";
-            this.removeTagButton.Size = new System.Drawing.Size(58, 23);
+            this.removeTagButton.Size = new System.Drawing.Size(76, 23);
             this.removeTagButton.TabIndex = 1;
             this.removeTagButton.Text = "Remove";
             this.removeTagButton.UseVisualStyleBackColor = true;
@@ -318,11 +316,20 @@
                         | System.Windows.Forms.AnchorStyles.Right)));
             this.addTagButton.Location = new System.Drawing.Point(2, 3);
             this.addTagButton.Name = "addTagButton";
-            this.addTagButton.Size = new System.Drawing.Size(60, 23);
+            this.addTagButton.Size = new System.Drawing.Size(78, 23);
             this.addTagButton.TabIndex = 0;
             this.addTagButton.Text = "Add";
             this.addTagButton.UseVisualStyleBackColor = true;
             this.addTagButton.Click += new System.EventHandler(this.button_Click);
+            // 
+            // addTagPictureBox
+            // 
+            this.addTagPictureBox.Location = new System.Drawing.Point(127, 25);
+            this.addTagPictureBox.Name = "addTagPictureBox";
+            this.addTagPictureBox.Size = new System.Drawing.Size(100, 81);
+            this.addTagPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.addTagPictureBox.TabIndex = 5;
+            this.addTagPictureBox.TabStop = false;
             // 
             // addTagPanel
             // 
@@ -357,19 +364,19 @@
             this.addTagFilter.TextChanged += new System.EventHandler(this.addTagFilter_TextChanged);
             this.addTagFilter.KeyDown += new System.Windows.Forms.KeyEventHandler(this.addTagFilter_KeyDown);
             // 
-            // menuStrip2
+            // mainMenuStrip
             // 
-            this.menuStrip2.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.mainMenuStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.fileToolStripMenuItem,
             this.searchOptionsToolStripMenuItem,
             this.sortToolStripMenuItem,
             this.manageToolStripMenuItem,
             this.uploadToToolStripMenuItem});
-            this.menuStrip2.Location = new System.Drawing.Point(0, 0);
-            this.menuStrip2.Name = "menuStrip2";
-            this.menuStrip2.Size = new System.Drawing.Size(812, 24);
-            this.menuStrip2.TabIndex = 1;
-            this.menuStrip2.Text = "menuStrip2";
+            this.mainMenuStrip.Location = new System.Drawing.Point(0, 0);
+            this.mainMenuStrip.Name = "mainMenuStrip";
+            this.mainMenuStrip.Size = new System.Drawing.Size(1060, 24);
+            this.mainMenuStrip.TabIndex = 1;
+            this.mainMenuStrip.Text = "menuStrip2";
             // 
             // fileToolStripMenuItem
             // 
@@ -477,14 +484,16 @@
             // byTagToolStripMenuItem
             // 
             this.byTagToolStripMenuItem.Name = "byTagToolStripMenuItem";
-            this.byTagToolStripMenuItem.Size = new System.Drawing.Size(117, 22);
+            this.byTagToolStripMenuItem.ShortcutKeyDisplayString = "Rt";
+            this.byTagToolStripMenuItem.Size = new System.Drawing.Size(138, 22);
             this.byTagToolStripMenuItem.Text = "By Tag";
             this.byTagToolStripMenuItem.Click += new System.EventHandler(this.button_Click);
             // 
             // byHashToolStripMenuItem
             // 
             this.byHashToolStripMenuItem.Name = "byHashToolStripMenuItem";
-            this.byHashToolStripMenuItem.Size = new System.Drawing.Size(117, 22);
+            this.byHashToolStripMenuItem.ShortcutKeyDisplayString = "Rh";
+            this.byHashToolStripMenuItem.Size = new System.Drawing.Size(138, 22);
             this.byHashToolStripMenuItem.Text = "By Hash";
             this.byHashToolStripMenuItem.Click += new System.EventHandler(this.button_Click);
             // 
@@ -500,14 +509,16 @@
             // buildToolStripMenuItem
             // 
             this.buildToolStripMenuItem.Name = "buildToolStripMenuItem";
-            this.buildToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
+            this.buildToolStripMenuItem.ShortcutKeyDisplayString = "^Ob";
+            this.buildToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
             this.buildToolStripMenuItem.Text = "Build";
             this.buildToolStripMenuItem.Click += new System.EventHandler(this.button_Click);
             // 
             // removeToolStripMenuItem
             // 
             this.removeToolStripMenuItem.Name = "removeToolStripMenuItem";
-            this.removeToolStripMenuItem.Size = new System.Drawing.Size(116, 22);
+            this.removeToolStripMenuItem.ShortcutKeyDisplayString = "^Or";
+            this.removeToolStripMenuItem.Size = new System.Drawing.Size(144, 22);
             this.removeToolStripMenuItem.Text = "Remove";
             this.removeToolStripMenuItem.Click += new System.EventHandler(this.button_Click);
             // 
@@ -628,6 +639,28 @@
             this.preferencesPanel.Size = new System.Drawing.Size(297, 473);
             this.preferencesPanel.TabIndex = 6;
             this.preferencesPanel.Visible = false;
+            // 
+            // moveDirDownButton
+            // 
+            this.moveDirDownButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.moveDirDownButton.Location = new System.Drawing.Point(247, 46);
+            this.moveDirDownButton.Name = "moveDirDownButton";
+            this.moveDirDownButton.Size = new System.Drawing.Size(45, 23);
+            this.moveDirDownButton.TabIndex = 5;
+            this.moveDirDownButton.Text = "Down";
+            this.moveDirDownButton.UseVisualStyleBackColor = true;
+            this.moveDirDownButton.Click += new System.EventHandler(this.button_Click);
+            // 
+            // moveDirUpButton
+            // 
+            this.moveDirUpButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.moveDirUpButton.Location = new System.Drawing.Point(247, 14);
+            this.moveDirUpButton.Name = "moveDirUpButton";
+            this.moveDirUpButton.Size = new System.Drawing.Size(45, 23);
+            this.moveDirUpButton.TabIndex = 4;
+            this.moveDirUpButton.Text = "Up";
+            this.moveDirUpButton.UseVisualStyleBackColor = true;
+            this.moveDirUpButton.Click += new System.EventHandler(this.button_Click);
             // 
             // preferencesSaveButton
             // 
@@ -753,47 +786,25 @@
             this.fileActionPanel.Visible = false;
             this.fileActionPanel.Paint += new System.Windows.Forms.PaintEventHandler(this.fileActionPanel_Paint);
             // 
-            // moveDirUpButton
-            // 
-            this.moveDirUpButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.moveDirUpButton.Location = new System.Drawing.Point(247, 14);
-            this.moveDirUpButton.Name = "moveDirUpButton";
-            this.moveDirUpButton.Size = new System.Drawing.Size(45, 23);
-            this.moveDirUpButton.TabIndex = 4;
-            this.moveDirUpButton.Text = "Up";
-            this.moveDirUpButton.UseVisualStyleBackColor = true;
-            this.moveDirUpButton.Click += new System.EventHandler(this.button_Click);
-            // 
-            // moveDirDownButton
-            // 
-            this.moveDirDownButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.moveDirDownButton.Location = new System.Drawing.Point(247, 46);
-            this.moveDirDownButton.Name = "moveDirDownButton";
-            this.moveDirDownButton.Size = new System.Drawing.Size(45, 23);
-            this.moveDirDownButton.TabIndex = 5;
-            this.moveDirDownButton.Text = "Down";
-            this.moveDirDownButton.UseVisualStyleBackColor = true;
-            this.moveDirDownButton.Click += new System.EventHandler(this.button_Click);
-            // 
             // TwilightSortle
             // 
             this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(812, 500);
+            this.ClientSize = new System.Drawing.Size(1060, 589);
+            this.Controls.Add(this.addTagPictureBox);
+            this.Controls.Add(this.addTagPanel);
             this.Controls.Add(this.fileActionPanel);
             this.Controls.Add(this.preferencesPanel);
             this.Controls.Add(this.workingPanel);
-            this.Controls.Add(this.addTagPanel);
+            this.Controls.Add(this.mainMenuStrip);
             this.Controls.Add(this.splitListDetails);
-            this.Controls.Add(this.menuStrip2);
             this.DoubleBuffered = true;
             this.Font = new System.Drawing.Font("Segoe UI", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.MainMenuStrip = this.menuStrip1;
             this.Name = "TwilightSortle";
             this.Text = "Twilight Sortle";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.TwilightSortle_FormClosing);
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.TwilightSortle_FormClosed);
             this.Load += new System.EventHandler(this.TwilightSortle_Load);
             this.DragDrop += new System.Windows.Forms.DragEventHandler(this.TwilightSortle_DragDrop);
             this.DragEnter += new System.Windows.Forms.DragEventHandler(this.TwilightSortle_DragEnter);
@@ -814,10 +825,11 @@
             this.splitTagControls.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.splitTagControls)).EndInit();
             this.splitTagControls.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.addTagPictureBox)).EndInit();
             this.addTagPanel.ResumeLayout(false);
             this.addTagPanel.PerformLayout();
-            this.menuStrip2.ResumeLayout(false);
-            this.menuStrip2.PerformLayout();
+            this.mainMenuStrip.ResumeLayout(false);
+            this.mainMenuStrip.PerformLayout();
             this.workingPanel.ResumeLayout(false);
             this.workingPanel.PerformLayout();
             this.preferencesPanel.ResumeLayout(false);
@@ -840,8 +852,7 @@
         private System.Windows.Forms.ColumnHeader mainListHeaderDirectory;
         private System.Windows.Forms.ColumnHeader mainListHeaderFilesize;
         private System.Windows.Forms.ColumnHeader mainListHeaderDimensions;
-        private System.Windows.Forms.MenuStrip menuStrip1;
-        private System.Windows.Forms.MenuStrip menuStrip2;
+        private System.Windows.Forms.MenuStrip mainMenuStrip;
         private System.Windows.Forms.ToolStripMenuItem fileToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem preferencesToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
@@ -901,6 +912,7 @@
         private System.Windows.Forms.ColumnHeader mainListHeaderUploaded;
         private System.Windows.Forms.Button moveDirDownButton;
         private System.Windows.Forms.Button moveDirUpButton;
+        private System.Windows.Forms.PictureBox addTagPictureBox;
 
     }
 }
