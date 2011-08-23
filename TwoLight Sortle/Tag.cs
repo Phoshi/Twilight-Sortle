@@ -37,7 +37,7 @@ namespace TwoLight_Sortle{
             _name = name;
         }
         public Tag(SerializationInfo info, StreamingContext context) {
-            _items = (HashSet<Item>) info.GetValue("_items", typeof(HashSet<Item>));
+            _items = new HashSet<Item>();
             _name = info.GetString("_name");
         }
         public override bool Equals(object obj) {
@@ -56,7 +56,6 @@ namespace TwoLight_Sortle{
 
         public void GetObjectData(SerializationInfo info, StreamingContext context) {
             info.AddValue("_name", _name);
-            info.AddValue("_items", _items, _items.GetType());
         }
     }
     static class Tags {
