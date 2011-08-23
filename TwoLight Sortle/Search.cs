@@ -14,6 +14,8 @@ namespace TwoLight_Sortle {
     class Search : IEnumerable, IEnumerator{
         private string _search;
         private SearchState _state;
+        private SortState _sort;
+        private bool _sortAscending;
 
         private List<Item> _allItems;
         private List<Item> _results;
@@ -30,23 +32,56 @@ namespace TwoLight_Sortle {
         /// <param name="allItems">The list of items to search</param>
         /// <param name="searchTerms">The string to search on</param>
         /// <param name="state">Search options</param>
-        public Search(List<Item> allItems, string searchTerms, SearchState state) {
+        public Search(List<Item> allItems, string searchTerms, SearchState state, SortState sort = SortState.Filename, bool sortAscending = true) {
             _allItems = allItems;
             _search = searchTerms;
             _state = state;
             _results = new List<Item>();
+            _sort = sort;
+            _sortAscending = sortAscending;
             doSearch();
         }
 
         private void doSearch() {
             foreach (Item item in _allItems) {
                 if (itemPassesSearch(item)) {
-                    string filesize = item.Filesize;
-                    Size size = item.Dimensions;
+                    try {
+                        //A little hacky, but if I do it here then it greatly simplifies background loading while still allowing me to add directories quickly
+                        string filesize = item.Filesize;
+                        Size size = item.Dimensions;
+                    }
+                    catch(Exception)
+                    {
+                        continue;
+                    }
                     _results.Add(item);
                 }
             }
-            _results = (from result in _results orderby result.Filename select result).ToList();
+            switch (_sort) {
+                case SortState.Filename:
+                    _results = _results.OrderBy(result => result.Filename).ToList();
+                    break;
+                case SortState.Dimensions:
+                    _results = _results.OrderBy(result => result.Span).ToList();
+                    break;
+                case SortState.Directory:
+                    _results = _results.OrderBy(result => result.Directory).ToList();
+                    break;
+                case SortState.External:
+                    _results = _results.OrderBy(result => result.ExternalUrl).ToList();
+                    break;
+                case SortState.Filesize:
+                    _results = _results.OrderBy(result => result.RawFilesize).ToList();
+                    break;
+                case SortState.Tags:
+                    _results = _results.OrderBy(result => result.HasTags ? result.Tags.First().Name : "").OrderBy(result => result.Tags.Count()).ToList();
+                    break;
+            }
+
+            if (!_sortAscending) {
+                _results.Reverse();
+            }
+
         }
 
         private bool regexIsBroken = false;
@@ -121,5 +156,14 @@ namespace TwoLight_Sortle {
         Regex = 1 << 3,
         Tagged = 1 << 4,
         Untagged = 1 << 5
+    }
+
+    enum SortState {
+        Filename,
+        Tags,
+        Dimensions,
+        Directory,
+        Filesize,
+        External,
     }
 }
