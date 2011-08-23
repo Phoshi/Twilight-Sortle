@@ -14,14 +14,20 @@ namespace Extensions {
         /// <param name="file"></param>
         public static void SaveToDisk(this object toSerialise, string file) {
             string savePath = Path.GetDirectoryName(Path.GetFullPath(file));
+            string saveFilePath = Path.Combine(savePath, file);
+            string tempName = Path.GetTempFileName();
             
             if (!Directory.Exists(savePath)) {
                 Directory.CreateDirectory(savePath);
             }
-            Stream writeStream = File.Open(Path.Combine(savePath, file), FileMode.Create);
+            Stream writeStream = File.Open(tempName, FileMode.Create);
             BinaryFormatter binaryFormatter = new BinaryFormatter();
             binaryFormatter.Serialize(writeStream, toSerialise);
             writeStream.Close();
+            if (File.Exists(saveFilePath)) {
+                File.Delete(saveFilePath);
+            }
+            File.Move(tempName, saveFilePath);
         }
 
         /// <summary>
