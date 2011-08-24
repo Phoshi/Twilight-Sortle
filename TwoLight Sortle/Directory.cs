@@ -61,6 +61,25 @@ namespace TwoLight_Sortle {
             set { _sortPath = value; }
         }
 
+        public long RawSize {
+            get { long size = (from item in Items select item.RawFilesize).Sum();
+                return size;
+            }
+        }
+
+        public string Size {
+            get {
+                string[] symbols = new[] { "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" }; //Future proofing!
+                long returnSize = RawSize;
+                int symbol = 0;
+                while (returnSize > 1024) {
+                    symbol++;
+                    returnSize /= 1024;
+                }
+                return "{0} {1}".With(returnSize, symbols[symbol]);
+            }
+        }
+
         #endregion
 
         #region Constructors
@@ -208,7 +227,7 @@ namespace TwoLight_Sortle {
         }
         public override string ToString() {
             if (_filepaths != null) {
-                return @"""{0}"" - {1} item{2}".With(Path, _filepaths.Count(), _filepaths.Count() == 1 ? "" : "s");
+                return @"""{0}"" - {1} item{2} - {3}".With(Path, _filepaths.Count(), _filepaths.Count() == 1 ? "" : "s", Size);
             }
             else {
                 return @"""{0}"" - Unloaded".With(Path);
