@@ -48,21 +48,27 @@ namespace TwoLight_Sortle {
         }
 
         void ContextMenuStrip_Opening(object sender, CancelEventArgs e) {
+            if (getSelectedItems().Count == 0) {
+                return;
+            }
             ContextMenuStrip strip = mainList.ContextMenuStrip;
             strip.Items.Clear();
-            strip.Items.Add("Open", null, ((s, eArgs)=>Process.Start(getSelectedItems()[0].Path)));
+            strip.Items.Add("Open", null, ((s, eArgs) => Process.Start(getSelectedItems()[0].Path)));
             strip.Items.Add("Open Containing Folder", null,
                             ((s, eArgs) => Process.Start("explorer.exe", "/select,{0}".With(getSelectedItems()[0].Path))));
             if (getSelectedItems().Any(item => item.ExternalUrl != "")) {
                 strip.Items.Add("Copy external URL(s)", null, ((s, eA) => {
-                                                             IEnumerable<string> result =
-                                                                 from item in getSelectedItems()
-                                                                 where item.ExternalUrl != ""
-                                                                 select item.ExternalUrl;
-                                                             Clipboard.SetText(String.Join(" ", result));
-                                                         }));
+                    IEnumerable<string> result =
+                        from item in getSelectedItems()
+                        where item.ExternalUrl != ""
+                        select item.ExternalUrl;
+                    Clipboard.SetText(String.Join(" ", result));
+                }));
             }
-            strip.Items.Add("Upload", null, ((s, eA)=>uploadImages()));
+            strip.Items.Add("Upload", null, ((s, eA) => uploadImages()));
+            strip.Items.Add(new ToolStripSeparator());
+
+            strip.Items.Add("Delete", null, ((s, eA)=>deleteSelectedFiles()));
         }
 
         private void restartWithAdminRights() {
@@ -75,37 +81,37 @@ namespace TwoLight_Sortle {
         private void buildQuickFolderAccessList() {
             foldersToolStripMenuItem.DropDownItems.Clear();
             settings.Directories.ForEach(directory => {
-                                             ToolStripMenuItem item = new ToolStripMenuItem(directory.Path);
-                                             item.Checked = directory.Enabled;
-                                             item.CheckOnClick = true;
-                                             item.MouseDown += ((sender, e) => runLongOperation((() => {
-                                                                                                     if (e.Button ==
-                                                                                                         MouseButtons.
-                                                                                                             Right) {
-                                                                                                         settings.
-                                                                                                             Directories
-                                                                                                             .ForEach(
-                                                                                                                 dir =>
-                                                                                                                 dir.
-                                                                                                                     Enabled
-                                                                                                                 = false);
-                                                                                                         directory.
-                                                                                                             Enabled =
-                                                                                                             true;
-                                                                                                         mainMenuStrip.Invoke(
-                                                                                                             (Action)(() => buildQuickFolderAccessList()));
-                                                                                                     }
-                                                                                                     else {
-                                                                                                         directory.
-                                                                                                             Enabled =
-                                                                                                             !directory.
-                                                                                                                  Enabled;
-                                                                                                     }
-                                                                                                 }),
-                                                                                                refreshListingWithSearch,
-                                                                                                "Updating Directory Settings"));
-                                             foldersToolStripMenuItem.DropDownItems.Add(item);
-                                         });
+                ToolStripMenuItem item = new ToolStripMenuItem(directory.Path);
+                item.Checked = directory.Enabled;
+                item.CheckOnClick = true;
+                item.MouseDown += ((sender, e) => runLongOperation((() => {
+                    if (e.Button ==
+                        MouseButtons.
+                            Right) {
+                        settings.
+                            Directories
+                            .ForEach(
+                                dir =>
+                                dir.
+                                    Enabled
+                                = false);
+                        directory.
+                            Enabled =
+                            true;
+                        mainMenuStrip.Invoke(
+                            (Action)(() => buildQuickFolderAccessList()));
+                    }
+                    else {
+                        directory.
+                            Enabled =
+                            !directory.
+                                 Enabled;
+                    }
+                }),
+                                                                   refreshListingWithSearch,
+                                                                   "Updating Directory Settings"));
+                foldersToolStripMenuItem.DropDownItems.Add(item);
+            });
         }
 
         private void setupActions() {
@@ -116,42 +122,42 @@ namespace TwoLight_Sortle {
             actions[deleteFileToolStripMenuItem] = deleteSelectedFiles;
             actions[preferencesSaveButton] = togglePreferences;
             actions[preferencesEnabledCheck] = (() => {
-                                                    int index = preferencesGetSelectedDirectory();
-                                                    if (index > -1) {
-                                                        Directory dir = settings.Directories.ElementAt(index);
-                                                        dir.Enabled = !dir.Enabled;
-                                                    }
-                                                });
+                int index = preferencesGetSelectedDirectory();
+                if (index > -1) {
+                    Directory dir = settings.Directories.ElementAt(index);
+                    dir.Enabled = !dir.Enabled;
+                }
+            });
             actions[preferencesRecursiveCheck] = (() => {
-                                                      int index = preferencesGetSelectedDirectory();
-                                                      if (index > -1) {
-                                                          Directory dir = settings.Directories.ElementAt(index);
-                                                          dir.Recursive = !dir.Recursive;
-                                                      }
-                                                  });
+                int index = preferencesGetSelectedDirectory();
+                if (index > -1) {
+                    Directory dir = settings.Directories.ElementAt(index);
+                    dir.Recursive = !dir.Recursive;
+                }
+            });
             actions[moveDirUpButton] = (() => {
-                                            int getSelectedDirectory = preferencesGetSelectedDirectory();
-                                            if (getSelectedDirectory > 0) {
-                                                Directory tempDir = settings.Directories.ElementAt(getSelectedDirectory);
-                                                settings.Directories[getSelectedDirectory] =
-                                                    settings.Directories[getSelectedDirectory - 1];
-                                                settings.Directories[getSelectedDirectory - 1] = tempDir;
-                                            }
-                                            rebuildDirectoriesList();
-                                        });
+                int getSelectedDirectory = preferencesGetSelectedDirectory();
+                if (getSelectedDirectory > 0) {
+                    Directory tempDir = settings.Directories.ElementAt(getSelectedDirectory);
+                    settings.Directories[getSelectedDirectory] =
+                        settings.Directories[getSelectedDirectory - 1];
+                    settings.Directories[getSelectedDirectory - 1] = tempDir;
+                }
+                rebuildDirectoriesList();
+            });
 
             actions[moveDirDownButton] = (() => {
-                                              int getSelectedDirectory = preferencesGetSelectedDirectory();
-                                              int numDirectories = settings.Directories.Count;
-                                              if (getSelectedDirectory < numDirectories - 1) {
-                                                  Directory tempDir =
-                                                      settings.Directories.ElementAt(getSelectedDirectory);
-                                                  settings.Directories[getSelectedDirectory] =
-                                                      settings.Directories[getSelectedDirectory + 1];
-                                                  settings.Directories[getSelectedDirectory + 1] = tempDir;
-                                              }
-                                              rebuildDirectoriesList();
-                                          });
+                int getSelectedDirectory = preferencesGetSelectedDirectory();
+                int numDirectories = settings.Directories.Count;
+                if (getSelectedDirectory < numDirectories - 1) {
+                    Directory tempDir =
+                        settings.Directories.ElementAt(getSelectedDirectory);
+                    settings.Directories[getSelectedDirectory] =
+                        settings.Directories[getSelectedDirectory + 1];
+                    settings.Directories[getSelectedDirectory + 1] = tempDir;
+                }
+                rebuildDirectoriesList();
+            });
 
             //Menu Items
             actions[exitToolStripMenuItem] = Close;
@@ -177,7 +183,7 @@ namespace TwoLight_Sortle {
             globals.bind("<C-s>", save);
 
             KeyBindings.KeyBindings searchBindings = new KeyBindings.KeyBindings(searchBox);
-            searchBindings.bind(new[] {Keys.Down}, mainList.Select);
+            searchBindings.bind(new[] { Keys.Down }, mainList.Select);
 
             KeyBindings.KeyBindings mainListBindings = new KeyBindings.KeyBindings(mainList);
             mainListBindings.bind("j", (() => mainList.Scroll(1)));
@@ -201,13 +207,13 @@ namespace TwoLight_Sortle {
             }
             string path = getSelectedItems()[0].Path;
             Action action = (() => {
-                                 string newPath = Path.GetTempPath();
-                                 string oldName = Path.GetFileNameWithoutExtension(path);
-                                 newName = Path.Combine(newPath, oldName + ".bmp");
-                                 Image image = Image.FromFile(path);
-                                 image.Save(newName, ImageFormat.Bmp);
-                                 image.Dispose();
-                             });
+                string newPath = Path.GetTempPath();
+                string oldName = Path.GetFileNameWithoutExtension(path);
+                newName = Path.Combine(newPath, oldName + ".bmp");
+                Image image = Image.FromFile(path);
+                image.Save(newName, ImageFormat.Bmp);
+                image.Dispose();
+            });
             Action actualAction = (() => SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, newName,
                                                               SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE));
             runLongOperation(action, null, "Preparing image");
@@ -219,10 +225,10 @@ namespace TwoLight_Sortle {
             if (selectedItems.Count > 0) {
                 List<string> urls = new List<string>();
                 Action action = (() => {
-                                     foreach (Item selectedItem in selectedItems) {
-                                         urls.Add(selectedItem.UploadedUrl);
-                                     }
-                                 });
+                    foreach (Item selectedItem in selectedItems) {
+                        urls.Add(selectedItem.UploadedUrl);
+                    }
+                });
                 Action after = (() => Clipboard.SetText(String.Join(" ", urls)));
                 runLongOperation(action, after, "Uploading {0} file(s).\nURL(s) will be placed on clipboard.".With(selectedItems.Count));
             }
@@ -230,17 +236,17 @@ namespace TwoLight_Sortle {
 
         private void removeSortedTree() {
             Action action = (() => {
-                                 foreach (Directory enabledDirectory in settings.EnabledDirectories) {
-                                     if (enabledDirectory.SortPath != null) {
-                                         try {
-                                             System.IO.Directory.Delete(enabledDirectory.SortPath, true);
-                                         }
-                                         finally {
-                                             enabledDirectory.Items.ForEach(item => item.Invalidated = true);
-                                         }
-                                     }
-                                 }
-                             });
+                foreach (Directory enabledDirectory in settings.EnabledDirectories) {
+                    if (enabledDirectory.SortPath != null) {
+                        try {
+                            System.IO.Directory.Delete(enabledDirectory.SortPath, true);
+                        }
+                        finally {
+                            enabledDirectory.Items.ForEach(item => item.Invalidated = true);
+                        }
+                    }
+                }
+            });
             Action after = refreshListingWithSearch;
             runLongOperation(action, after, "Removing sorted tree");
         }
@@ -248,9 +254,9 @@ namespace TwoLight_Sortle {
         private void deleteSelectedFiles() {
             List<Item> items = getSelectedItems();
             Action action = (() => {
-                                 items.ForEach(item => item.Delete());
-                                 items.ForEach(item => settings.GetDirectory(item.Directory).UpdateFilepaths());
-                             });
+                items.ForEach(item => item.Delete());
+                items.ForEach(item => settings.GetDirectory(item.Directory).UpdateFilepaths());
+            });
             runLongOperation(action, refreshListingWithSearch, "Deleting files");
         }
 
@@ -292,7 +298,7 @@ namespace TwoLight_Sortle {
                                      updateTagList(getSelectedItems().First());
                                      refreshListingWithSearch();
                                  }
-                              })
+                             })
                              , "Removing Selected Tag");
         }
 
@@ -310,17 +316,17 @@ namespace TwoLight_Sortle {
 
         private void runLongOperation(Action operation, Action callback = null, string reason = "") {
             if (workingThread.IsBusy) {
-                List<object> newQueueItem = new List<object>() {operation, callback, reason};
+                List<object> newQueueItem = new List<object>() { operation, callback, reason };
                 queuedActions.Add(newQueueItem);
                 return;
             }
             workingThread = new BackgroundWorker();
             workingThread.DoWork += (((object sender, DoWorkEventArgs e) => {
-                                          if (operation != null) {
-                                              operation();
-                                          }
-                                          workingPanel.Invoke((Action) ((() => updateWorkingPanelPosition())));
-                                      }));
+                if (operation != null) {
+                    operation();
+                }
+                workingPanel.Invoke((Action)((() => updateWorkingPanelPosition())));
+            }));
             if (callback != null) {
                 workingThread.RunWorkerCompleted += ((object sender, RunWorkerCompletedEventArgs e) => callback());
             }
@@ -454,7 +460,7 @@ namespace TwoLight_Sortle {
             Action filesAction = (() => {
                 Tags.TagList = Tags.TagList.LoadFromDisk<Dictionary<string, Tag>>(Path.Combine(
                     Application.UserAppDataPath, "Tags"));
-                TwoLight_Sortle.Load.FilesCache.ToList().ForEach(item=>item.Value.Tags.ToList().ForEach(tag=>tag.AddedImage(item.Value)));
+                TwoLight_Sortle.Load.FilesCache.ToList().ForEach(item => item.Value.Tags.ToList().ForEach(tag => tag.AddedImage(item.Value)));
             });
             settings = new Settings();
             Action loadSettingsAction = (() => {
@@ -542,20 +548,20 @@ namespace TwoLight_Sortle {
             List<List<string>> frequentSets = null;
             IEnumerable<Item> filesToSort = null;
             Action action = (() => {
-                                 Dictionary<string, List<string>> aprioriData = new Dictionary<string, List<string>>();
-                                 foreach (Item item in allEnabledItems()) {
-                                     aprioriData[item.Path] = (from tag in item.Tags select tag.Name).ToList();
-                                 }
-                                 Apriori.Apriori apriori = new Apriori.Apriori(aprioriData, 5);
-                                 frequentSets = apriori.getFrequentSets();
-                                 filesToSort = from file in allEnabledItems() where file.Invalidated select file;
-                             });
+                Dictionary<string, List<string>> aprioriData = new Dictionary<string, List<string>>();
+                foreach (Item item in allEnabledItems()) {
+                    aprioriData[item.Path] = (from tag in item.Tags select tag.Name).ToList();
+                }
+                Apriori.Apriori apriori = new Apriori.Apriori(aprioriData, 5);
+                frequentSets = apriori.getFrequentSets();
+                filesToSort = from file in allEnabledItems() where file.Invalidated select file;
+            });
             runLongOperation(action, null, "Processing tag data");
             Action makeTree = (() => {
-                                   foreach (Item file in filesToSort) {
-                                       TreeHelper.createSortedTree(file, frequentSets, settings);
-                                   }
-                               });
+                foreach (Item file in filesToSort) {
+                    TreeHelper.createSortedTree(file, frequentSets, settings);
+                }
+            });
             Action after = refreshListingWithSearch;
             runLongOperation(makeTree, after, "Updating sorted tree");
         }
@@ -595,10 +601,8 @@ namespace TwoLight_Sortle {
                 preferencesPanel.Height = this.ClientRectangle.Height - mainMenuStrip.Height;
                 preferencesPanel.Left = 0;
                 preferencesPanel.Top = mainMenuStrip.Height;
-                //splitListDetails.Left = preferencesPanel.Right;
-                //splitListDetails.Width = this.Width - preferencesPanel.Left;
                 preferencesPanel.Visible = true;
-                preferencesPanel.Invalidate();
+                preferencesPanel.Refresh();
                 rebuildDirectoriesList();
                 int index = preferencesGetSelectedDirectory();
                 if (index == -1) {
@@ -652,7 +656,7 @@ namespace TwoLight_Sortle {
             }
             if (item.Index == preferencesDirectoryList.Items.Count - 1) {
                 if (folderBrowser.ShowDialog() == DialogResult.OK) {
-                    runLongOperation((()=>settings.AddDirectory(folderBrowser.SelectedPath)), rebuildDirectoriesList, "Creating Directory Cache");
+                    runLongOperation((() => settings.AddDirectory(folderBrowser.SelectedPath)), rebuildDirectoriesList, "Creating Directory Cache");
                 }
             }
             else {
@@ -881,6 +885,27 @@ namespace TwoLight_Sortle {
             }
         }
 
+        private void mainList_ColumnClick(object sender, ColumnClickEventArgs e) {
+            Dictionary<int, SortState> states = new Dictionary<int, SortState>() {
+                                                                                     {0, SortState.Tags},
+                                                                                     {1, SortState.Filename},
+                                                                                     {2, SortState.Directory},
+                                                                                     {3, SortState.Filesize},
+                                                                                     {4, SortState.Dimensions},
+                                                                                     {5, SortState.External}
+                                                                                 };
+            if (states.ContainsKey(e.Column)) {
+                if (states[e.Column] == settings.SortOptions) {
+                    settings.SortDescending = !settings.SortDescending;
+                }
+                else {
+                    settings.SortOptions = states[e.Column];
+                    settings.SortDescending = true;
+                }
+            }
+            refreshListingWithSearch();
+        }
+
         #endregion
 
         #region Click Handlers
@@ -936,7 +961,7 @@ namespace TwoLight_Sortle {
         private void TwilightSortle_DragEnter(object sender, DragEventArgs e) {
             dragged = new List<string>();
             if (e.Data.GetDataPresent(DataFormats.Html)) {
-                string html = (String) e.Data.GetData(DataFormats.Html);
+                string html = (String)e.Data.GetData(DataFormats.Html);
                 MatchCollection matches = Regex.Matches(html, @"<a [^>]*href=[""'](.*?)[""']");
                 foreach (Match match in matches) {
                     dragged.Add(match.Groups[1].Value);
@@ -965,12 +990,12 @@ namespace TwoLight_Sortle {
         }
 
         private void TwilightSortle_DragLeave(object sender, EventArgs e) {
-                fileActionPanel.Visible = false;
+            fileActionPanel.Visible = false;
         }
 
         private void updateFileActionsPanel() {
-            fileActionPanel.Width = (int) (ClientRectangle.Width * 0.9f);
-            fileActionPanel.Left = (int) (ClientRectangle.Width * 0.05f);
+            fileActionPanel.Width = (int)(ClientRectangle.Width * 0.9f);
+            fileActionPanel.Left = (int)(ClientRectangle.Width * 0.05f);
         }
 
         private void fileActionPanel_Paint(object sender, PaintEventArgs e) {
@@ -981,8 +1006,8 @@ namespace TwoLight_Sortle {
             Brush brush = new SolidBrush(Color.Black);
             Brush bgBrush = new SolidBrush(Color.LightGray);
             Brush selectedBgBrush = new SolidBrush(Color.LightPink);
-            Font font = new Font(this.Font.FontFamily, 16);
             foreach (Directory directory in settings.Directories) {
+                Font font = new Font(this.Font.FontFamily, 16);
                 float rectHeight = directory.Path.Height(font);
                 string sortString = "Not sorting.";
                 if (directory.SortPath != null) {
@@ -992,8 +1017,11 @@ namespace TwoLight_Sortle {
                 rectHeight += sortString.Height(this.Font);
                 rectHeight += spacing;
                 fileItemHeight = rectHeight;
-                Rectangle backRect = new Rectangle(0, (int) currentHeight, fileActionPanel.Width, (int) rectHeight);
+                Rectangle backRect = new Rectangle(0, (int)currentHeight, fileActionPanel.Width, (int)rectHeight);
                 e.Graphics.FillRectangle(backRect.Contains(clientMousePosition) ? selectedBgBrush : bgBrush, backRect);
+                while (directory.ToString().Width(font) > fileActionPanel.Width) {
+                    font = new Font(font.FontFamily, font.Size - 1);
+                }
                 e.Graphics.DrawString(directory.ToString(), font, brush, 0.0f, currentHeight);
                 currentHeight += directory.Path.Height(font);
                 currentHeight += spacing;
@@ -1023,13 +1051,13 @@ namespace TwoLight_Sortle {
                 return;
             }
             Point clientMousePosition = fileActionPanel.PointToClient(MousePosition);
-            int index = (int) (clientMousePosition.Y / fileItemHeight);
+            int index = (int)(clientMousePosition.Y / fileItemHeight);
             if (requiresDownload) {
                 Action action = (() => {
-                                     dragged.ForEach(url => settings.Directories.ElementAt(index).DownloadTo(url));
-                                     settings.Directories.ElementAt(index).UpdateFilepaths();
+                    dragged.ForEach(url => settings.Directories.ElementAt(index).DownloadTo(url));
+                    settings.Directories.ElementAt(index).UpdateFilepaths();
 
-                                 });
+                });
                 Action later = refreshListingWithSearch;
                 fileActionPanel.Visible = false;
                 runLongOperation(action, later,
@@ -1038,23 +1066,23 @@ namespace TwoLight_Sortle {
             }
             else {
                 Action action = (() => {
-                                     dragged.ForEach(((filepath) => {
-                                                          string fileName = Path.GetFileName(filepath);
-                                                          string newPath =
-                                                              Path.Combine(settings.Directories.ElementAt(index).Path,
-                                                                           fileName);
-                                                          while (File.Exists(newPath)) {
-                                                              string extension = Path.GetExtension(newPath);
-                                                              fileName = Path.GetFileNameWithoutExtension(newPath);
-                                                              newPath =
-                                                                  Path.Combine(
-                                                                      settings.Directories.ElementAt(index).Path,
-                                                                      "{0}.{1}".With(fileName, extension));
-                                                          }
-                                                          File.Move(filepath, newPath);
-                                                      }));
-                                     settings.Directories.ForEach(dir => dir.UpdateFilepaths());
-                                 });
+                    dragged.ForEach(((filepath) => {
+                        string fileName = Path.GetFileName(filepath);
+                        string newPath =
+                            Path.Combine(settings.Directories.ElementAt(index).Path,
+                                         fileName);
+                        while (File.Exists(newPath)) {
+                            string extension = Path.GetExtension(newPath);
+                            fileName = Path.GetFileNameWithoutExtension(newPath);
+                            newPath =
+                                Path.Combine(
+                                    settings.Directories.ElementAt(index).Path,
+                                    "{0}.{1}".With(fileName, extension));
+                        }
+                        File.Move(filepath, newPath);
+                    }));
+                    settings.Directories.ForEach(dir => dir.UpdateFilepaths());
+                });
                 Action later = refreshListingWithSearch;
                 fileActionPanel.Visible = false;
                 runLongOperation(action, later, "Moving Files");
@@ -1062,26 +1090,5 @@ namespace TwoLight_Sortle {
         }
 
         #endregion
-
-        private void mainList_ColumnClick(object sender, ColumnClickEventArgs e) {
-            Dictionary<int, SortState> states = new Dictionary<int, SortState>() {
-                                                                                     {0, SortState.Tags},
-                                                                                     {1, SortState.Filename},
-                                                                                     {2, SortState.Directory},
-                                                                                     {3, SortState.Filesize},
-                                                                                     {4, SortState.Dimensions},
-                                                                                     {5, SortState.External}
-                                                                                 };
-            if (states.ContainsKey(e.Column)) {
-                if (states[e.Column] == settings.SortOptions) {
-                    settings.SortDescending = !settings.SortDescending;
-                }
-                else {
-                    settings.SortOptions = states[e.Column];
-                    settings.SortDescending = true;
-                }
-            }
-            refreshListingWithSearch();
-        }
     }
 }
